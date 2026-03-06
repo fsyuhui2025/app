@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, minimum-scale=0.5, maximum-scale=2.0">
+    <title>分组网址管理-跨端同步版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        }
+        :root {
+            --bg-main: #1e1e2f;
+            --bg-card: #2d2d42;
+            --bg-card-hover: #43342c;
+            --text-main: #f5f5f7;
+            --text-secondary: #c0c0c8;
+            --primary: #74b9ff;
+            --primary-hover: #54a7ff;
+            --warning: #f97316;
+            --warning-deep: #ea580c;
+            --success: #00b894;
+            --success-hover: #00a884;
+            --danger: #e74c3c;
+            --border: #444466;
+            --menu-bg: #3d3d5c;
+            --mask: rgba(0,0,0,0.7);
+            transition: all 0.3s ease;
+        }
+        .light-mode {
+            --bg-main: #f8f9fa;
+            --bg-card: #ffffff;
+            --bg-card-hover: #fff7ed;
+            --text-main: #2d3436;
+            --text-secondary: #636e72;
+            --primary: #0984e3;
+            --primary-hover: #076ab5;
+            --warning: #f97316;
+            --warning-deep: #ea580c;
+            --success: #00b894;
+            --success-hover: #00a884;
+            --danger: #d63031;
+            --border: #e0e0e0;
+            --menu-bg: #ffffff;
+            --mask: rgba(0,0,0,0.5);
+        }
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            padding: 1rem 0.8rem;
+            min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        /* 顶栏重构：标题+管理下拉+状态+主题切换 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px solid var(--border);
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+            white-space: nowrap;
+        }
+        /* 管理下拉按钮样式 */
+        .manage-btn {
+            padding: 0.4rem 0.8rem;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-main);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .manage-btn:hover {
+            background-color: var(--bg-card-hover);
+            color: var(--warning);
+        }
+        /* 管理下拉菜单 */
+        .manage-dropdown {
+            position: absolute;
+            top: calc(100% + 0.5rem);
+            right: 0;
+            background-color: var(--menu-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 9999;
+            display: none;
+            min-width: 160px;
+        }
+        .manage-dropdown-item {
+            padding: 0.6rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .manage-dropdown-item:hover {
+            background-color: var(--bg-card-hover);
+            color: var(--warning);
+        }
+        .manage-dropdown-item.export {
+            color: var(--warning);
+        }
+        .manage-dropdown-item.import {
+            color: var(--primary);
+        }
+        .manage-dropdown-item.tips {
+            color: var(--success);
+        }
+        /* 下拉菜单容器：相对定位 */
+        .manage-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+        }
+        /* 状态提示 */
+        .sync-status {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            white-space: nowrap;
+        }
+        .sync-success {
+            color: var(--success);
+        }
+        .sync-fail {
+            color: var(--danger);
+        }
+        /* 主题切换 */
+        .theme-switch {
+            width: 46px;
+            height: 22px;
+            background-color: var(--bg-card);
+            border-radius: 11px;
+            position: relative;
+            cursor: pointer;
+            border: 1px solid var(--border);
+        }
+        .theme-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            transition: transform 0.3s ease;
+        }
+        .light-mode .theme-switch::after {
+            transform: translateX(24px);
+        }
+        /* 分组标签栏 */
+        .tab-bar {
+            display: flex;
+            gap: 0.4rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .tab-item {
+            padding: 0.4rem 0.8rem;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        .tab-item.active {
+            background-color: var(--warning);
+            color: #fff;
+            border-color: var(--warning);
+        }
+        .tab-item:hover:not(.active) {
+            background-color: var(--bg-card-hover);
+            color: var(--warning);
+        }
+        .tab-add {
+            color: var(--primary);
+            font-weight: 500;
+        }
+        /* 操作行：仅保留新增网址按钮 */
+        .action-row {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+        .add-btn {
+            padding: 0.6rem 1.5rem;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .add-btn:hover {
+            background-color: var(--primary-hover);
+            transform: scale(1.02);
+        }
+        /* 隐藏文件输入框 */
+        #importFile {
+            display: none;
+        }
+        /* 网址卡片列表 */
+        .url-list {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.8rem;
+            width: 100%;
+        }
+        .url-card {
+            background-color: var(--bg-card);
+            border-radius: 8px;
+            padding: 1rem 0.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-align: center;
+            position: relative;
+            border: 1px solid transparent;
+            user-select: none;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .url-card:hover {
+            background-color: var(--bg-card-hover);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(249, 115, 22, 0.25);
+            border-color: var(--warning);
+        }
+        .card-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 0.3rem;
+        }
+        /* 右键菜单 */
+        .context-menu {
+            position: fixed;
+            background-color: var(--menu-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 9999;
+            display: none;
+            min-width: 100px;
+            font-size: 0.85rem;
+        }
+        .menu-item {
+            padding: 0.5rem 0.8rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .menu-item.edit {
+            color: var(--warning);
+        }
+        .menu-item.delete {
+            color: var(--danger);
+        }
+        .menu-item:hover {
+            background-color: var(--bg-card-hover);
+        }
+        /* 弹窗通用样式 */
+        .mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--mask);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            display: none;
+            backdrop-filter: blur(4px);
+        }
+        .form-modal {
+            background-color: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: 8px;
+            width: 92%;
+            max-width: 380px;
+            border: 1px solid var(--border);
+        }
+        /* 跨端同步说明弹窗 */
+        .sync-tips-modal {
+            max-width: 400px;
+        }
+        .sync-tips-modal h3 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .sync-tips-modal ul {
+            padding-left: 1.2rem;
+            line-height: 1.8;
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+        .sync-tips-modal li {
+            margin-bottom: 0.5rem;
+        }
+        .sync-tips-modal .highlight {
+            color: var(--warning);
+            font-weight: 500;
+        }
+        .modal-title {
+            font-size: 1.2rem;
+            color: var(--primary);
+            margin-bottom: 1.2rem;
+            text-align: center;
+            font-weight: 600;
+        }
+        .form-item {
+            margin-bottom: 1rem;
+        }
+        .form-item label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.4rem;
+        }
+        .form-item input,
+        .form-item select {
+            width: 100%;
+            padding: 0.6rem;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+        .form-item input:focus,
+        .form-item select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(116, 185, 255, 0.2);
+        }
+        .form-btns {
+            display: flex;
+            gap: 0.8rem;
+            justify-content: flex-end;
+            margin-top: 1.2rem;
+        }
+        .form-btn {
+            padding: 0.5rem 1.2rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .cancel-btn {
+            background-color: var(--bg-main);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        .cancel-btn:hover {
+            background-color: var(--bg-card-hover);
+            color: var(--text-main);
+        }
+        .confirm-btn {
+            background-color: var(--primary);
+            color: white;
+        }
+        .confirm-btn:hover {
+            background-color: var(--primary-hover);
+            transform: scale(1.02);
+        }
+        .empty-tip {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            padding: 2rem 0;
+            grid-column: 1 / -1;
+        }
+        .no-context {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        /* 移动端适配 */
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1.2rem;
+            }
+            .manage-btn {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.85rem;
+            }
+            .sync-status {
+                font-size: 0.7rem;
+            }
+        }
+        @media (max-width: 400px) {
+            .tab-item {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.8rem;
+            }
+            .add-btn {
+                padding: 0.5rem 1.2rem;
+                font-size: 0.85rem;
+            }
+            .card-name {
+                font-size: 0.8rem;
+            }
+            .manage-dropdown-item {
+                padding: 0.5rem 0.8rem;
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body class="no-context">
+    <div class="container">
+        <!-- 顶栏：重构为 标题+管理下拉+状态+主题切换 -->
+        <div class="header">
+            <div class="header-left">
+                <h1>分组网址管理</h1>
+                <!-- 管理下拉按钮容器 -->
+                <div class="manage-container" id="manageContainer">
+                    <div class="manage-btn" id="manageBtn">
+                        ⚙️ 管理
+                    </div>
+                    <!-- 管理下拉菜单：包含导出、导入、同步说明 -->
+                    <div class="manage-dropdown" id="manageDropdown">
+                        <div class="manage-dropdown-item export" id="exportItem">📤 导出便携JSON</div>
+                        <div class="manage-dropdown-item import" id="importItem">📥 导入JSON同步</div>
+                        <div class="manage-dropdown-item tips" id="tipsItem">❓ 跨端同步说明</div>
+                    </div>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="sync-status" id="syncStatus">未导入/导出数据</div>
+                <div class="theme-switch" id="themeSwitch"></div>
+            </div>
+        </div>
+
+        <!-- 分组标签 -->
+        <div class="tab-bar" id="tabBar"></div>
+
+        <!-- 操作行：仅保留新增网址按钮 -->
+        <div class="action-row">
+            <button class="add-btn" id="addUrlBtn">+ 新增网址</button>
+            <!-- 隐藏的文件选择框 -->
+            <input type="file" id="importFile" accept=".json" />
+        </div>
+
+        <!-- 网址卡片列表 -->
+        <div class="url-list" id="urlList"></div>
+    </div>
+
+    <!-- 右键菜单 -->
+    <div class="context-menu" id="contextMenu">
+        <div class="menu-item edit" id="menuEdit">编辑</div>
+        <div class="menu-item delete" id="menuDelete">删除</div>
+    </div>
+
+    <!-- 网址新增/编辑弹窗 -->
+    <div class="mask" id="modalMask">
+        <div class="form-modal">
+            <h2 class="modal-title" id="modalTitle">新增网址</h2>
+            <form id="urlForm">
+                <input type="hidden" id="editId">
+                <div class="form-item">
+                    <label for="urlName">网址名称</label>
+                    <input type="text" id="urlName" placeholder="请输入名称" required>
+                </div>
+                <div class="form-item">
+                    <label for="urlLink">网址 / 本地文件</label>
+                    <input type="text" id="urlLink" placeholder="https:// 或 file://" required>
+                </div>
+                <div class="form-item">
+                    <label for="urlGroup">所属分组</label>
+                    <select id="urlGroup" required></select>
+                </div>
+                <div class="form-btns">
+                    <button type="button" class="form-btn cancel-btn" id="cancelBtn">取消</button>
+                    <button type="submit" class="form-btn confirm-btn">确认</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 新增分组弹窗 -->
+    <div class="mask" id="groupModalMask">
+        <div class="form-modal">
+            <h2 class="modal-title">新增分组</h2>
+            <form id="groupForm">
+                <div class="form-item">
+                    <label for="groupName">分组名称</label>
+                    <input type="text" id="groupName" placeholder="如：设计、学习、开发" required>
+                </div>
+                <div class="form-btns">
+                    <button type="button" class="form-btn cancel-btn" id="cancelGroupBtn">取消</button>
+                    <button type="submit" class="form-btn confirm-btn">确认</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 跨端同步说明弹窗 -->
+    <div class="mask" id="syncTipsMask">
+        <div class="form-modal sync-tips-modal">
+            <h3>📱/💻 跨端同步使用说明</h3>
+            <ul>
+                <li>1. <span class="highlight">PC → 手机</span>：在PC端点击「导出便携JSON」，将文件发送到手机（微信/QQ/邮件）</li>
+                <li>2. <span class="highlight">手机 → PC</span>：在手机端点击「导出便携JSON」，将文件发送到PC</li>
+                <li>3. 接收文件后，在目标设备点击「导入JSON同步」，选择接收到的JSON文件即可完成同步</li>
+                <li>4. 同步会覆盖当前设备数据，建议先导出当前数据备份</li>
+                <li>5. 支持所有浏览器（Chrome/Edge/ Safari/微信浏览器）</li>
+            </ul>
+            <button type="button" class="form-btn confirm-btn" style="width: 100%;" id="closeSyncTipsBtn">我知道了</button>
+        </div>
+    </div>
+
+    <script>
+        // 全局状态
+        let state = {
+            currentGroup: '股票',
+            currentCardId: null,
+            longPressTimer: null,
+            historyCount: 0,
+            isFirstBack: true,
+            isManageOpen: false // 管理菜单是否展开
+        };
+        const LONG_PRESS_TIME = 500;
+
+        // DOM元素：新增管理相关元素，移除原有独立导入导出按钮
+        const el = {
+            tabBar: document.getElementById('tabBar'),
+            urlList: document.getElementById('urlList'),
+            themeSwitch: document.getElementById('themeSwitch'),
+            addUrlBtn: document.getElementById('addUrlBtn'),
+            importFile: document.getElementById('importFile'),
+            syncStatus: document.getElementById('syncStatus'),
+            manageContainer: document.getElementById('manageContainer'),
+            manageBtn: document.getElementById('manageBtn'),
+            manageDropdown: document.getElementById('manageDropdown'),
+            exportItem: document.getElementById('exportItem'),
+            importItem: document.getElementById('importItem'),
+            tipsItem: document.getElementById('tipsItem'),
+            syncTipsMask: document.getElementById('syncTipsMask'),
+            closeSyncTipsBtn: document.getElementById('closeSyncTipsBtn'),
+            contextMenu: document.getElementById('contextMenu'),
+            menuEdit: document.getElementById('menuEdit'),
+            menuDelete: document.getElementById('menuDelete'),
+            modalMask: document.getElementById('modalMask'),
+            modalTitle: document.getElementById('modalTitle'),
+            urlForm: document.getElementById('urlForm'),
+            editId: document.getElementById('editId'),
+            urlName: document.getElementById('urlName'),
+            urlLink: document.getElementById('urlLink'),
+            urlGroup: document.getElementById('urlGroup'),
+            cancelBtn: document.getElementById('cancelBtn'),
+            groupModalMask: document.getElementById('groupModalMask'),
+            groupForm: document.getElementById('groupForm'),
+            groupName: document.getElementById('groupName'),
+            cancelGroupBtn: document.getElementById('cancelGroupBtn')
+        };
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initDefaultData();
+            loadTheme();
+            renderTabs();
+            renderUrlList();
+            bindBaseEvents();
+            initHistory();
+            listenBackKey();
+            bindManageEvents(); // 绑定管理下拉菜单事件
+            bindSyncTipsEvents(); // 绑定同步说明事件
+            bindImportExportEvents(); // 绑定导入导出事件
+        });
+
+        // 初始化默认分组
+        function initDefaultData() {
+            if (!localStorage.getItem('urlGroups')) {
+                const defaultGroups = ['股票', '常用', '工具'];
+                localStorage.setItem('urlGroups', JSON.stringify(defaultGroups));
+            }
+            if (!localStorage.getItem('groupedUrls')) {
+                localStorage.setItem('groupedUrls', JSON.stringify({}));
+            }
+        }
+
+        // 初始化历史记录
+        function initHistory() {
+            if (window.history.state === null) {
+                window.history.pushState({ page: 'urlManager' }, document.title, window.location.href);
+                state.historyCount = window.history.length;
+            }
+        }
+
+        // 分组操作
+        function getGroups() {
+            return JSON.parse(localStorage.getItem('urlGroups')) || [];
+        }
+        function addGroup(name) {
+            const groups = getGroups();
+            if (!groups.includes(name)) {
+                groups.push(name);
+                localStorage.setItem('urlGroups', JSON.stringify(groups));
+            }
+        }
+        function addGroupsBatch(names) {
+            const groups = getGroups();
+            const newGroups = names.filter(name => !groups.includes(name) && name.trim());
+            if (newGroups.length) {
+                localStorage.setItem('urlGroups', JSON.stringify([...groups, ...newGroups]));
+            }
+        }
+
+        // 网址数据操作
+        function getGroupedUrls() {
+            return JSON.parse(localStorage.getItem('groupedUrls')) || {};
+        }
+        function saveGroupedUrls(data) {
+            localStorage.setItem('groupedUrls', JSON.stringify(data));
+        }
+        function getCurrentGroupUrls() {
+            const all = getGroupedUrls();
+            return all[state.currentGroup] || [];
+        }
+        function saveCurrentGroupUrls(list) {
+            const all = getGroupedUrls();
+            all[state.currentGroup] = list;
+            saveGroupedUrls(all);
+        }
+
+        // 获取本地完整数据（用于导出）
+        function getLocalFullData() {
+            return {
+                version: '1.0',
+                updateTime: new Date().toLocaleString(),
+                urlGroups: getGroups(),
+                groupedUrls: getGroupedUrls()
+            };
+        }
+
+        // 保存本地完整数据（导入后）
+        function saveLocalFullData(data) {
+            if (data.urlGroups) localStorage.setItem('urlGroups', JSON.stringify(data.urlGroups));
+            if (data.groupedUrls) saveGroupedUrls(data.groupedUrls);
+            // 刷新渲染
+            state.currentGroup = data.urlGroups[0] || '股票';
+            renderTabs();
+            renderUrlList();
+        }
+
+        // 渲染分组标签
+        function renderTabs() {
+            const groups = getGroups();
+            let html = groups.map(g => `
+                <div class="tab-item ${g === state.currentGroup ? 'active' : ''}" data-group="${g}">
+                    ${g}
+                </div>
+            `).join('');
+            html += `<div class="tab-item tab-add" id="addGroupBtn">+ 新增分组</div>`;
+            el.tabBar.innerHTML = html;
+        }
+
+        // 渲染当前分组网址
+        function renderUrlList() {
+            const list = getCurrentGroupUrls();
+            if (list.length === 0) {
+                el.urlList.innerHTML = `<p class="empty-tip">当前分组「${state.currentGroup}」暂无网址</p>`;
+                return;
+            }
+            el.urlList.innerHTML = list.map(item => `
+                <div class="url-card" data-id="${item.id}" data-link="${item.link}">
+                    <div class="card-name">${item.name}</div>
+                </div>
+            `).join('');
+        }
+
+        // 刷新分组下拉框
+        function refreshGroupSelect(selected = state.currentGroup) {
+            const groups = getGroups();
+            el.urlGroup.innerHTML = groups.map(g => `
+                <option value="${g}" ${g === selected ? 'selected' : ''}>${g}</option>
+            `).join('');
+        }
+
+        // 打开新增/编辑弹窗
+        function openUrlForm(isEdit = false) {
+            refreshGroupSelect();
+            if (isEdit) {
+                const list = getCurrentGroupUrls();
+                const item = list.find(x => x.id === state.currentCardId);
+                el.editId.value = item.id;
+                el.urlName.value = item.name;
+                el.urlLink.value = item.link;
+                el.urlGroup.value = state.currentGroup;
+                el.modalTitle.textContent = '编辑网址';
+            } else {
+                el.urlForm.reset();
+                el.editId.value = '';
+                el.modalTitle.textContent = '新增网址';
+            }
+            el.modalMask.style.display = 'flex';
+        }
+
+        // 主题切换
+        function loadTheme() {
+            const theme = localStorage.getItem('urlManagerTheme') || 'dark';
+            if (theme === 'light') document.body.classList.add('light-mode');
+            el.themeSwitch.addEventListener('click', () => {
+                document.body.classList.toggle('light-mode');
+                localStorage.setItem('urlManagerTheme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+            });
+        }
+
+        // 基础事件绑定（原有功能）
+        function bindBaseEvents() {
+            // 切换分组
+            el.tabBar.addEventListener('click', e => {
+                const tab = e.target.closest('.tab-item');
+                if (!tab) return;
+                if (tab.id === 'addGroupBtn') {
+                    el.groupModalMask.style.display = 'flex';
+                    return;
+                }
+                state.currentGroup = tab.dataset.group;
+                renderTabs();
+                renderUrlList();
+                closeManageDropdown(); // 切换分组时关闭管理菜单
+            });
+
+            // 新增网址
+            el.addUrlBtn.addEventListener('click', () => {
+                openUrlForm(false);
+                closeManageDropdown(); // 新增网址时关闭管理菜单
+            });
+
+            // 网址表单提交
+            el.urlForm.addEventListener('submit', e => {
+                e.preventDefault();
+                const id = el.editId.value || Date.now().toString();
+                const name = el.urlName.value.trim();
+                const link = el.urlLink.value.trim();
+                const group = el.urlGroup.value;
+                const all = getGroupedUrls();
+                if (!all[group]) all[group] = [];
+                if (el.editId.value) {
+                    Object.keys(all).forEach(g => {
+                        all[g] = all[g].filter(x => x.id !== id);
+                    });
+                }
+                all[group].push({ id, name, link });
+                saveGroupedUrls(all);
+                if (group === state.currentGroup) {
+                    renderUrlList();
+                } else {
+                    state.currentGroup = group;
+                    renderTabs();
+                    renderUrlList();
+                }
+                el.modalMask.style.display = 'none';
+            });
+
+            // 新增分组
+            el.groupForm.addEventListener('submit', e => {
+                e.preventDefault();
+                const name = el.groupName.value.trim();
+                if (name) {
+                    addGroup(name);
+                    renderTabs();
+                    el.groupModalMask.style.display = 'none';
+                    el.groupForm.reset();
+                }
+            });
+
+            // 取消弹窗
+            el.cancelBtn.addEventListener('click', () => el.modalMask.style.display = 'none');
+            el.cancelGroupBtn.addEventListener('click', () => {
+                el.groupModalMask.style.display = 'none';
+                el.groupForm.reset();
+            });
+            el.modalMask.addEventListener('click', e => {
+                if (e.target === el.modalMask) el.modalMask.style.display = 'none';
+            });
+            el.groupModalMask.addEventListener('click', e => {
+                if (e.target === el.groupModalMask) el.groupModalMask.style.display = 'none';
+            });
+
+            // 卡片单击访问
+            el.urlList.addEventListener('click', e => {
+                const card = e.target.closest('.url-card');
+                if (card) {
+                    window.history.pushState({ page: 'urlPage' }, document.title, window.location.href);
+                    state.isFirstBack = true;
+                    window.open(card.dataset.link, '_self');
+                    closeManageDropdown(); // 打开网址时关闭管理菜单
+                }
+            });
+
+            // 右键菜单
+            el.urlList.addEventListener('contextmenu', e => {
+                const card = e.target.closest('.url-card');
+                if (!card) return;
+                e.preventDefault();
+                state.currentCardId = card.dataset.id;
+                showContextMenu(e.clientX, e.clientY);
+                closeManageDropdown(); // 右键菜单时关闭管理菜单
+            });
+
+            // 移动端长按
+            el.urlList.addEventListener('touchstart', e => {
+                const card = e.target.closest('.url-card');
+                if (!card) return;
+                state.currentCardId = card.dataset.id;
+                state.longPressTimer = setTimeout(() => {
+                    showContextMenu(e.touches[0].clientX, e.touches[0].clientY);
+                    closeManageDropdown(); // 长按菜单时关闭管理菜单
+                }, LONG_PRESS_TIME);
+            });
+            el.urlList.addEventListener('touchend', clearLongPress);
+            el.urlList.addEventListener('touchmove', clearLongPress);
+
+            // 菜单操作
+            el.menuEdit.addEventListener('click', () => {
+                openUrlForm(true);
+                hideContextMenu();
+            });
+            el.menuDelete.addEventListener('click', () => {
+                if (confirm('确定删除此网址？')) {
+                    const all = getGroupedUrls();
+                    Object.keys(all).forEach(g => {
+                        all[g] = all[g].filter(x => x.id !== state.currentCardId);
+                    });
+                    saveGroupedUrls(all);
+                    renderUrlList();
+                }
+                hideContextMenu();
+            });
+
+            // 点击空白关闭右键菜单
+            document.addEventListener('click', e => {
+                if (!el.contextMenu.contains(e.target)) hideContextMenu();
+            });
+            document.addEventListener('touchstart', e => {
+                if (!el.contextMenu.contains(e.target)) hideContextMenu();
+            });
+
+            // 点击空白处关闭管理下拉菜单
+            document.addEventListener('click', e => {
+                if (!el.manageContainer.contains(e.target) && state.isManageOpen) {
+                    closeManageDropdown();
+                }
+            });
+            document.addEventListener('touchstart', e => {
+                if (!el.manageContainer.contains(e.target) && state.isManageOpen) {
+                    closeManageDropdown();
+                }
+            });
+        }
+
+        // 管理下拉菜单核心事件
+        function bindManageEvents() {
+            // 点击管理按钮展开/收起菜单
+            el.manageBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // 阻止冒泡到document
+                state.isManageOpen ? closeManageDropdown() : openManageDropdown();
+            });
+
+            // 管理菜单点击阻止冒泡
+            el.manageDropdown.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        }
+
+        // 打开管理下拉菜单
+        function openManageDropdown() {
+            el.manageDropdown.style.display = 'block';
+            state.isManageOpen = true;
+            el.manageBtn.style.backgroundColor = 'var(--bg-card-hover)';
+            el.manageBtn.style.color = 'var(--warning)';
+        }
+
+        // 关闭管理下拉菜单
+        function closeManageDropdown() {
+            el.manageDropdown.style.display = 'none';
+            state.isManageOpen = false;
+            el.manageBtn.style.backgroundColor = '';
+            el.manageBtn.style.color = '';
+        }
+
+        // 绑定同步说明弹窗事件
+        function bindSyncTipsEvents() {
+            el.tipsItem.addEventListener('click', () => {
+                el.syncTipsMask.style.display = 'flex';
+                closeManageDropdown(); // 打开说明时关闭管理菜单
+            });
+            el.closeSyncTipsBtn.addEventListener('click', () => {
+                el.syncTipsMask.style.display = 'none';
+            });
+            el.syncTipsMask.addEventListener('click', e => {
+                if (e.target === el.syncTipsMask) el.syncTipsMask.style.display = 'none';
+            });
+        }
+
+        // 绑定导入导出事件（关联管理菜单）
+        function bindImportExportEvents() {
+            // 导出便携JSON
+            el.exportItem.addEventListener('click', exportAllData);
+            // 导入JSON同步：触发文件选择框
+            el.importItem.addEventListener('click', () => {
+                el.importFile.click();
+                closeManageDropdown(); // 选择文件时关闭管理菜单
+            });
+            // 文件选择后处理导入
+            el.importFile.addEventListener('change', handleFileImport);
+        }
+
+        // 导出所有数据为便携JSON文件（跨端适配）
+        function exportAllData() {
+            try {
+                const exportData = getLocalFullData();
+                // 适配跨端路径：保留原始路径，导入时自动识别
+                const adaptData = JSON.parse(JSON.stringify(exportData));
+                Object.keys(adaptData.groupedUrls).forEach(group => {
+                    adaptData.groupedUrls[group] = adaptData.groupedUrls[group].map(item => item);
+                });
+                const jsonStr = JSON.stringify(adaptData, null, 2);
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `网址管理_跨端同步_${new Date().getTime()}.json`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+                // 更新状态提示
+                updateSyncStatus('success', `导出成功 | ${new Date().toLocaleString()}`);
+                alert('便携JSON导出成功！\n1. 发送到其他设备即可同步\n2. 建议定期导出备份');
+                closeManageDropdown(); // 导出成功后关闭管理菜单
+            } catch (e) {
+                updateSyncStatus('fail', `导出失败：${e.message}`);
+                alert(`导出失败：${e.message}`);
+                closeManageDropdown();
+            }
+        }
+
+        // 处理跨端JSON导入
+        function handleFileImport(e) {
+            const file = e.target.files[0];
+            el.importFile.value = ''; // 清空选择，避免重复选择同一文件不触发
+            if (!file) return;
+            if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+                alert('请选择正确的JSON格式文件！');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const importData = JSON.parse(e.target.result);
+                    if (!importData.urlGroups || !importData.groupedUrls) {
+                        throw new Error('数据格式错误，缺少分组或网址信息');
+                    }
+                    const isCover = confirm('⚠️ 导入将覆盖当前所有数据，是否继续？\n（建议先导出当前数据备份）');
+                    if (!isCover) return;
+                    saveLocalFullData(importData);
+                    // 更新状态提示
+                    updateSyncStatus('success', `导入成功 | ${new Date().toLocaleString()}`);
+                    alert('跨端同步成功！\n所有分组和网址已更新为导入的数据');
+                } catch (e) {
+                    updateSyncStatus('fail', `导入失败：${e.message}`);
+                    alert(`导入失败：${e.message}`);
+                }
+            };
+            reader.readAsText(file, 'utf-8');
+        }
+
+        // 更新导入导出状态提示
+        function updateSyncStatus(type, text) {
+            el.syncStatus.innerHTML = text;
+            el.syncStatus.className = 'sync-status';
+            if (type === 'success') {
+                el.syncStatus.classList.add('sync-success');
+            } else if (type === 'fail') {
+                el.syncStatus.classList.add('sync-fail');
+            }
+        }
+
+        // 右键菜单显示/隐藏
+        function showContextMenu(x, y) {
+            const w = el.contextMenu.offsetWidth;
+            const h = el.contextMenu.offsetHeight;
+            const px = Math.min(x, window.innerWidth - w - 10);
+            const py = Math.min(y, window.innerHeight - h - 10);
+            el.contextMenu.style.left = px + 'px';
+            el.contextMenu.style.top = py + 'px';
+            el.contextMenu.style.display = 'block';
+        }
+        function hideContextMenu() {
+            el.contextMenu.style.display = 'none';
+            state.currentCardId = null;
+        }
+
+        // 清除长按定时器
+        function clearLongPress() {
+            clearTimeout(state.longPressTimer);
+        }
+
+        // 返回键监听
+        function listenBackKey() {
+            window.addEventListener('popstate', (e) => {
+                if (state.isFirstBack && e.state?.page === 'urlManager') {
+                    state.isFirstBack = false;
+                    return;
+                }
+                const isQuit = confirm('确定要退出网址管理工具吗？');
+                if (!isQuit) {
+                    window.history.pushState({ page: 'urlManager' }, document.title, window.location.href);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
