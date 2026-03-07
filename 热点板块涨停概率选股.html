@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>热点板块涨停概率选股</title>
+    <style>
+        :root {
+            --primary-bg: #0a0e1a;
+            --secondary-bg: #031225;
+            --accent-color: #00d4ff;
+            --highlight-color: #ffef64;
+            --rise-color: #ff4d4f;
+            --fall-color: #00ff7f;
+            --neutral-color: #82aaff;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --transition: all 0.2s ease;
+            --gem-green: #52c41a;
+            --low-up-color: #ffa39e;
+            --down-color: #00ff7f;
+        }
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",Arial,sans-serif;background:var(--primary-bg);color:var(--text-primary);line-height:1.3;min-height:100vh;padding:8px;}
+        .container{max-width:1580px;margin:0 auto 0 0;}
+        .header{text-align:center;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border-color);}
+        .main-title{font-size:20px;color:var(--accent-color);margin-bottom:4px;text-shadow:0 0 10px rgba(0,212,255,.3);}
+        .sub-title{display:none;}
+        .controls{display:flex;justify-content:space-between;align-items:center;background:var(--secondary-bg);padding:6px 10px;border-radius:5px;margin-bottom:6px;flex-wrap:wrap;gap:5px;}
+        .control-group{display:flex;align-items:center;gap:4px;}
+        .control-label{color:var(--text-secondary);font-size:11px;background:var(--rise-color);padding:2px 6px;border-radius:4px;color:#fff;}
+        .select-control{background:rgba(0,0,0,.3);border:1px solid var(--border-color);color:var(--text-primary);padding:4px 6px;border-radius:4px;font-size:11px;min-width:110px;}
+        .btn-control{background:var(--accent-color);color:var(--primary-bg);border:none;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;transition:var(--transition);}
+        .btn-control:hover{background:#00b8e6;transform:translateY(-1px);}
+        .refresh-status{display:flex;align-items:center;gap:4px;color:var(--text-secondary);font-size:11px;}
+        .refresh-dot{width:5px;height:5px;border-radius:50%;background:#52c41a;animation:blink 2s infinite;}
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+        .content-grid{display:grid;grid-template-columns:.7fr 1.2fr 1.3fr;gap:8px;margin-bottom:10px;}
+        @media(max-width:1200px){.content-grid{grid-template-columns:1fr;}}
+        .section-card{background:var(--secondary-bg);border-radius:6px;overflow:hidden;box-shadow:var(--card-shadow);}
+        .section-header{padding:8px 10px;background:rgba(0,0,0,.2);border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;}
+        .section-title-group{display:flex;align-items:center;gap:10px;}
+        .section-title{font-size:14px;color:var(--accent-color);font-weight:600;}
+        .section-count{background:var(--accent-color);color:var(--primary-bg);padding:2px 5px;border-radius:8px;font-size:10px;font-weight:600;}
+        .section-content{padding:8px;max-height:400px;overflow-y:auto;}
+        .export-btn{background:linear-gradient(135deg,#52c41a,#73d13d);color:#fff;border:none;padding:4px 12px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;transition:var(--transition);}
+        .export-btn:hover{background:linear-gradient(135deg,#389e0d,#52c41a);transform:translateY(-1px);}
+        .hot-block-list{display:flex;flex-direction:column;gap:4px;}
+        .hot-block-item{background:rgba(0,0,0,.2);border-radius:5px;padding:6px;border-left:2px solid var(--accent-color);transition:var(--transition);cursor:pointer;}
+        .hot-block-item:hover{background:rgba(0,0,0,.3);transform:translateX(3px);}
+        .hot-block-item.active{background:rgba(0,212,255,.1);border-left-color:var(--highlight-color);}
+        .block-name{font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;}
+        .block-strength{background:var(--rise-color);color:#fff;padding:1px 4px;border-radius:6px;font-size:9px;font-weight:600;}
+        .block-stats{display:flex;gap:8px;font-size:10px;color:var(--text-secondary);}
+        .stat-item{display:flex;flex-direction:column;}
+        .stat-label{font-size:8px;margin-bottom:1px;}
+        .stat-value{font-weight:600;color:var(--text-primary);font-size:9px;}
+        .stat-value.up{color:var(--rise-color);}
+        .stat-value.down{color:var(--fall-color);}
+        .stock-table{width:100%;border-collapse:collapse;font-size:11px;}
+        .stock-table th{background:rgba(0,0,0,.3);padding:5px 6px;text-align:left;font-size:9px;font-weight:600;color:var(--text-secondary);border-bottom:1px solid var(--border-color);cursor:pointer;position:relative;}
+        .sortable{cursor:pointer;position:relative;padding-right:20px!important;}
+        .sortable:hover{background:rgba(0,212,255,.1);}
+        .sortable::after{content:"↓";position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--accent-color);opacity:.5;}
+        .sortable.asc::after{content:"↑";opacity:1;}
+        .sortable.desc::after{content:"↓";opacity:1;}
+        .stock-table td{padding:4px 6px;border-bottom:1px solid var(--border-color);line-height:1.1;}
+        .stock-table tr{height:26px;}
+        .stock-table tr:hover{background:rgba(0,0,0,.2);}
+        .stock-table tr.highlight{background:rgba(255,77,79,.1);}
+        .stock-info{display:flex;flex-direction:column;gap:1px;}
+        .stock-name.clickable{color:var(--accent-color);cursor:pointer;text-decoration:underline;text-decoration-color:rgba(0,212,255,.3);font-weight:600;font-size:11px;}
+        .stock-name.clickable:hover{color:#00b8e6;text-decoration-color:var(--accent-color);}
+        .stock-code{font-size:8px;color:var(--text-secondary);cursor:pointer;}
+        .stock-code:hover{color:var(--accent-color);text-decoration:underline;}
+        .stock-block{font-size:8px;color:var(--accent-color);background:rgba(0,212,255,.1);padding:1px 4px;border-radius:2px;display:inline-block;}
+        .gem-label{display:inline-block;background:linear-gradient(135deg,var(--gem-green),#73d13d);color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;margin-left:4px;text-shadow:0 1px 1px rgba(0,0,0,.3);box-shadow:0 1px 2px rgba(0,0,0,.2);}
+        .probability-cell{display:flex;align-items:center;gap:4px;}
+        .probability-bar{flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
+        .probability-fill{height:100%;border-radius:2px;transition:width .5s ease;}
+        .probability-fill.high{background:linear-gradient(90deg,#ff4d4f,#ff7875);}
+        .probability-fill.medium{background:linear-gradient(90deg,#fa8c16,#ffa940);}
+        .probability-fill.low{background:linear-gradient(90deg,#52c41a,#73d13d);}
+        .probability-value{font-weight:600;min-width:30px;text-align:right;font-size:10px;}
+        .probability-value.high{color:#ff4d4f;text-shadow:0 0 4px rgba(255,77,79,.3);}
+        .probability-value.medium{color:#fa8c16;}
+        .probability-value.low{color:#52c41a;}
+        .change-up-high{color:var(--rise-color);font-weight:600;font-size:10px;}
+        .change-up-low{color:var(--low-up-color);font-weight:600;font-size:10px;}
+        .change-down{color:var(--down-color);font-weight:600;font-size:10px;}
+        .warn-tag{display:inline-block;padding:1px 4px;border-radius:2px;font-size:8px;font-weight:500;}
+        .warn-stop{background:rgba(255,77,79,.2);color:var(--rise-color);border:1px solid rgba(255,77,79,.3);}
+        .warn-price{background:rgba(250,140,22,.2);color:#fa8c16;border:1px solid rgba(250,140,22,.3);}
+        .top-stocks-table{width:100%;border-collapse:collapse;font-size:11px;}
+        .top-stocks-table th{background:rgba(0,0,0,.3);padding:5px 6px;text-align:left;font-size:9px;font-weight:600;color:var(--text-secondary);border-bottom:1px solid var(--border-color);cursor:pointer;position:relative;}
+        .top-stocks-table td{padding:4px 6px;border-bottom:1px solid var(--border-color);line-height:1.1;}
+        .top-stocks-table tr{height:26px;}
+        .top-stocks-table tr:hover{background:rgba(0,0,0,.2);}
+        .top-stocks-table tr.highlight{background:rgba(255,77,79,.1);}
+        .rank-cell{width:30px;text-align:center;font-weight:600;color:var(--accent-color);}
+        .top-probability-bar{width:60px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;margin-right:4px;}
+        .top-probability-fill{height:100%;border-radius:2px;}
+        .top-probability-fill.high{background:linear-gradient(90deg,#ff4d4f,#ff7875);}
+        .top-probability-fill.medium{background:linear-gradient(90deg,#fa8c16,#ffa940);}
+        .top-probability-fill.low{background:linear-gradient(90deg,#52c41a,#73d13d);}
+        .top-probability-cell{display:flex;align-items:center;gap:4px;min-width:100px;}
+        .loading{text-align:center;padding:15px;color:var(--text-secondary);}
+        .spinner{width:22px;height:22px;border:2px solid rgba(0,212,255,.2);border-top-color:var(--accent-color);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 6px;}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .error{background:rgba(255,77,79,.1);border:1px solid rgba(255,77,79,.3);border-radius:4px;padding:10px;color:var(--rise-color);text-align:center;margin:10px 0;}
+        .empty-state{text-align:center;padding:15px;color:var(--text-secondary);}
+        @media(max-width:768px){
+            body{padding:6px;}
+            .main-title{font-size:20px;}
+            .controls{flex-direction:column;align-items:stretch;}
+            .control-group{width:100%;justify-content:space-between;}
+            .content-grid{grid-template-columns:1fr;}
+            .stock-table,.top-stocks-table{display:block;overflow-x:auto;}
+            .section-content{padding:6px;}
+            .stock-table td,.stock-table th,.top-stocks-table td,.top-stocks-table th{padding:3px 5px;}
+        }
+        /* ===== 新增边框 ===== */
+        .content-grid>.section-card:first-child{border:1px solid #ff4d4f;box-shadow:0 0 10px rgba(255,77,79,.3),var(--card-shadow);}
+        .content-grid>.section-card:nth-child(2),.content-grid>.section-card:nth-child(3){border:1px dashed #ff4d4f;box-shadow:0 0 8px rgba(255,77,79,.2),var(--card-shadow);}
+        .section-card:nth-child(2) .section-content,.section-card:nth-child(3) .section-content{padding-top:0;}
+        .stock-table thead th,.top-stocks-table thead th{position:sticky;top:0;z-index:11;background:#fffacd!important;color:#333;border-bottom:2px solid #ff4d4f;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="main-title">热点板块涨停概率选股</h1>
+            <p class="sub-title">基于竞价数据与AI分析，筛选热点板块中涨停概率最高的10只股票</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <span class="control-label">排序方式：</span>
+                <select id="sortSelect" class="select-control">
+                    <option value="probability">涨停概率 ↓</option>
+                    <option value="strength">异动强度 ↓</option>
+                    <option value="bidChange">竞价涨幅 ↓</option>
+                    <option value="realChange">实时涨幅 ↓</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <span class="control-label">板块筛选：</span>
+                <select id="blockFilter" class="select-control">
+                    <option value="all">全部板块</option>
+                </select>
+            </div>
+            <button id="refreshBtn" class="btn-control">刷新数据</button>
+            <div class="refresh-status">
+                <span class="refresh-dot"></span>
+                <span id="lastRefreshTime">最后刷新：--:--:--</span>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <div class="section-card">
+                <div class="section-header">
+                    <h2 class="section-title">热点板块</h2>
+                    <span class="section-count" id="blockCount">0</span>
+                </div>
+                <div class="section-content">
+                    <div id="hotBlocksList" class="hot-block-list">
+                        <div class="loading"><div class="spinner"></div><div>加载热点板块中...</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-title-group">
+                        <h2 class="section-title">板块内股票</h2>
+                        <button id="exportBtn" class="export-btn">导出到通达信</button>
+                    </div>
+                    <span class="section-count" id="stockCount">0</span>
+                </div>
+                <div class="section-content">
+                    <table class="stock-table">
+                        <thead>
+                            <tr>
+                                <th>股票</th>
+                                <th>所属板块</th>
+                                <th class="sortable" data-sort="probability">涨停概率 </th>
+                                <th class="sortable" data-sort="bidChange">竞价涨幅 </th>
+                                <th class="sortable" data-sort="realChange">实时涨幅 </th>
+                                <th class="sortable" data-sort="warnType">异动类型 </th>
+                            </tr>
+                        </thead>
+                        <tbody id="stocksTableBody">
+                            <tr><td colspan="6" class="loading"><div class="spinner" style="width:30px;height:30px;"></div><div>选择热点板块查看股票</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-card top-stocks-section">
+                <div class="section-header">
+                    <div class="section-title-group">
+                        <h2 class="section-title">涨停概率TOP10</h2>
+                        <button id="exportTop10Btn" class="export-btn">导出TOP10到通达信</button>
+                    </div>
+                    <span class="section-count" id="topStocksCount">0</span>
+                </div>
+                <div class="section-content">
+                    <table class="top-stocks-table">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;">排名</th>
+                                <th>股票</th>
+                                <th style="width:80px;">所属板块</th>
+                                <th style="width:100px;">涨停概率 </th>
+                                <th style="width:80px;">竞价涨幅 </th>
+                                <th style="width:80px;">实时涨幅 </th>
+                                <th style="width:70px;">异动类型 </th>
+                                <th style="width:70px;">异动强度 </th>
+                            </tr>
+                        </thead>
+                        <tbody id="topStocksTableBody">
+                            <tr><td colspan="8" class="loading"><div class="spinner" style="width:30px;height:30px;"></div><div>计算涨停概率中...</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class HotStockPicker {
+            constructor() {
+                this.blockListApiUrl = 'https://push2dycalc.eastmoney.com/api/qt/clist/get?fs=m%3A90%2Be%3A2%2Cm%3A90%2Be%3A3&fltt=2&invt=2&fields=f3%2Cf4%2Cf10%2Cf12%2Cf13%2Cf14%2Cf104%2Cf105%2Cf106%2Cf615%2Cf616%2Cf621%2Cf622%2Cf623%2Cf624%2Cf625%2Cf626&fid=f621&po=1&pn=1&pz=100&np=1&ut=c92c50e6b0fab2c17cd5e276e9a79c42';
+                this.hotBlocksList = document.getElementById('hotBlocksList');
+                this.stocksTableBody = document.getElementById('stocksTableBody');
+                this.topStocksTableBody = document.getElementById('topStocksTableBody');
+                this.blockCount = document.getElementById('blockCount');
+                this.stockCount = document.getElementById('stockCount');
+                this.topStocksCount = document.getElementById('topStocksCount');
+                this.refreshBtn = document.getElementById('refreshBtn');
+                this.lastRefreshTime = document.getElementById('lastRefreshTime');
+                this.sortSelect = document.getElementById('sortSelect');
+                this.blockFilter = document.getElementById('blockFilter');
+                this.exportBtn = document.getElementById('exportBtn');
+                this.exportTop10Btn = document.getElementById('exportTop10Btn');
+                this.allBlocks = [];
+                this.allStocks = [];
+                this.topStocks = [];
+                this.selectedBlock = null;
+                this.blockStockMap = new Map();
+                this.currentSort = { field: 'probability', direction: 'desc' };
+                this.aiWeights = { bidChange: 0.35, realChange: 0.25, warnType: 0.2, blockStrength: 0.1, volumeRatio: 0.1 };
+                this.excludePatterns = /^(688|9|4|ST|\*ST)/;
+                this.excludeKeywords = ['ST', '*ST', '北证', '科创', '退市', '退'];
+                this.init();
+            }
+            init() {
+                this.bindEvents();
+                this.bindTableSorting();
+                this.loadData();
+                this.startAutoRefresh();
+            }
+            bindEvents() {
+                this.refreshBtn.addEventListener('click', () => this.loadData());
+                this.sortSelect.addEventListener('change', () => this.updateTopStocks());
+                this.blockFilter.addEventListener('change', (e) => {
+                    if (e.target.value === 'all') {
+                        this.selectedBlock = null;
+                        this.sortAndRenderStocks();
+                    } else {
+                        const block = this.allBlocks.find(b => b.f12 === e.target.value);
+                        if (block) this.selectBlock(block);
+                    }
+                });
+                this.exportBtn.addEventListener('click', () => this.exportToTdx());
+                this.exportTop10Btn.addEventListener('click', () => this.exportTop10ToTdx());
+            }
+            bindTableSorting() {
+                document.querySelectorAll('.sortable').forEach(th => {
+                    th.addEventListener('click', (e) => {
+                        const field = e.target.dataset.sort;
+                        if (this.currentSort.field === field) {
+                            this.currentSort.direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
+                        } else {
+                            this.currentSort.field = field;
+                            this.currentSort.direction = 'desc';
+                        }
+                        document.querySelectorAll('.sortable').forEach(h => h.classList.remove('asc', 'desc'));
+                        e.target.classList.add(this.currentSort.direction);
+                        this.sortAndRenderStocks();
+                    });
+                });
+            }
+            async loadData() {
+                try {
+                    this.showLoading();
+                    await this.fetchAllBlocks();
+                    await this.fetchAllStocks();
+                    this.updateTopStocks();
+                    this.updateRefreshTime();
+                } catch (error) {
+                    console.error('加载数据失败:', error);
+                    this.showError('加载数据失败: ' + error.message);
+                }
+            }
+            async fetchAllBlocks() {
+                const res = await fetch(this.blockListApiUrl);
+                const data = await res.json();
+                if (data.rc !== 0 || !data.data) throw new Error('数据格式错误');
+                this.allBlocks = (data.data.diff || []).sort((a, b) => (b.f621 || 0) - (a.f621 || 0)).slice(0, 20);
+                this.renderHotBlocks();
+                this.updateBlockFilter();
+                this.blockCount.textContent = this.allBlocks.length;
+            }
+            async fetchAllStocks() {
+                this.allStocks = [];
+                this.blockStockMap.clear();
+                await Promise.all(this.allBlocks.map(async (block) => {
+                    const stocks = await this.fetchBlockStocks(block.f12);
+                    const filtered = this.filterStocks(stocks);
+                    const withBlock = filtered.map(s => {
+                        const ai = this.calculateAiZtProbability(s, block.f621);
+                        return { ...s, blockCode: block.f12, blockName: block.f14, blockStrength: block.f621, aiProbability: ai.probability, aiConfidence: ai.confidence };
+                    });
+                    this.blockStockMap.set(block.f12, withBlock);
+                    this.allStocks.push(...withBlock);
+                }));
+                this.stockCount.textContent = this.allStocks.length;
+            }
+            async fetchBlockStocks(blockCode) {
+                const url = `https://push2dycalc.eastmoney.com/api/qt/clist/get?fs=m%3A1%2Bt%3A2%2Bb%3A${blockCode}%2Cm%3A1%2Bt%3A23%2Bb%3A${blockCode}%2Cm%3A0%2Bt%3A6%2Bb%3A${blockCode}%2Cm%3A0%2Bt%3A13%2Bb%3A${blockCode}%2Cm%3A0%2Bt%3A80%2Bb%3A${blockCode}%2Cm%3A0%2Bt%3A81%2Bs%3A2048%2Bb%3A${blockCode}&fltt=2&fields=f3%2Cf4%2Cf10%2Cf12%2Cf13%2Cf14%2Cf615%2Cf630&fid=f615&po=1&pn=1&pz=50&np=1&ut=c92c50e6b0fab2c17cd5e276e9a79c42`;
+                const res = await fetch(url);
+                const data = await res.json();
+                return data.rc === 0 && data.data ? data.data.diff || [] : [];
+            }
+            filterStocks(stocks) {
+                return stocks.filter(s => {
+                    const code = s.f12 || '';
+                    const name = s.f14 || '';
+                    if (this.excludePatterns.test(code)) return false;
+                    for (const kw of this.excludeKeywords) if (name.includes(kw)) return false;
+                    if (name.startsWith('ST') || name.startsWith('*ST')) return false;
+                    return true;
+                });
+            }
+            calculateAiZtProbability(s, blockStrength) {
+                const bid = s.f615 || 0, real = s.f3 || 0, warn = s.f630 || 0, vol = s.f10 || 3;
+                const normBid = Math.min(Math.max(bid / 10, 0), 1);
+                const normReal = Math.min(Math.max(real / 10, 0), 1);
+                const normBlock = Math.min(Math.max(blockStrength / 100, 0), 1);
+                const normVol = Math.min(Math.max(vol / 10, 0), 1);
+                const warnScore = ({ 5: 1, 4: .85, 3: .7, 2: .5, 1: .3 }[warn] || .1);
+                const score = normBid * this.aiWeights.bidChange + normReal * this.aiWeights.realChange + warnScore * this.aiWeights.warnType + normBlock * this.aiWeights.blockStrength + normVol * this.aiWeights.volumeRatio;
+                const prob = Math.round(Math.min(Math.max(score * 100 + (Math.random() - .5) * 5, 0), 100));
+                const conf = Math.round(75 + normBid * 10 + normBlock * 10 + normVol * 5);
+                return { probability: prob, confidence: conf };
+            }
+            getProbabilityLevel(p) { return p >= 70 ? 'high' : p >= 40 ? 'medium' : 'low'; }
+            getWarnTypeText(w) { return ({ 5: '涨停抢筹', 4: '竞价抢筹', 3: '大幅高开', 2: '竞价拉升', 1: '普通异动' }[w] || '无异动'); }
+            isGemStock(code) { return String(code).startsWith('300'); }
+            getChangeColorClass(v) { return v < 0 ? 'change-down' : v <= 5 ? 'change-up-low' : 'change-up-high'; }
+            renderHotBlocks() {
+                this.hotBlocksList.innerHTML = '';
+                if (!this.allBlocks.length) { this.hotBlocksList.innerHTML = '<div class="empty-state">暂无热点板块数据</div>'; return; }
+                this.allBlocks.forEach((b, i) => {
+                    const item = document.createElement('div');
+                    item.className = 'hot-block-item';
+                    if (i === 0) { item.classList.add('active'); this.selectedBlock = b; }
+                    const up = b.f104 || 0, down = b.f105 || 0, total = up + down || 1, upPct = ((up / total) * 100).toFixed(1);
+                    item.innerHTML = `
+                        <div class="block-name"><span>${b.f14}</span><span class="block-strength">强度 ${b.f621 || 0}</span></div>
+                        <div class="block-stats">
+                            <div class="stat-item"><span class="stat-label">涨幅</span><span class="stat-value ${b.f3 >= 0 ? 'up' : 'down'}">${b.f3 >= 0 ? '+' : ''}${(b.f3 || 0).toFixed(2)}%</span></div>
+                            <div class="stat-item"><span class="stat-label">上涨家数</span><span class="stat-value">${up}/${total}</span></div>
+                            <div class="stat-item"><span class="stat-label">上涨比例</span><span class="stat-value up">${upPct}%</span></div>
+                        </div>`;
+                    item.addEventListener('click', () => { document.querySelectorAll('.hot-block-item').forEach(el => el.classList.remove('active')); item.classList.add('active'); this.selectBlock(b); });
+                    this.hotBlocksList.appendChild(item);
+                });
+            }
+            selectBlock(block) {
+                this.selectedBlock = block;
+                this.blockFilter.value = block.f12;
+                this.sortAndRenderStocks();
+            }
+            sortStocks(stocks) {
+                return [...stocks].sort((a, b) => {
+                    let va, vb;
+                    switch (this.currentSort.field) {
+                        case 'probability': va = a.aiProbability; vb = b.aiProbability; break;
+                        case 'bidChange': va = a.f615 || 0; vb = b.f615 || 0; break;
+                        case 'realChange': va = a.f3 || 0; vb = b.f3 || 0; break;
+                        case 'warnType': va = a.f630 || 0; vb = b.f630 || 0; break;
+                        default: va = a.aiProbability; vb = b.aiProbability;
+                    }
+                    return this.currentSort.direction === 'asc' ? va - vb : vb - va;
+                });
+            }
+            sortAndRenderStocks() {
+                const stocks = this.selectedBlock ? (this.blockStockMap.get(this.selectedBlock.f12) || []) : this.allStocks;
+                this.renderStocksTable(this.sortStocks(stocks));
+            }
+            renderStocksTable(stocks) {
+                this.stocksTableBody.innerHTML = '';
+                if (!stocks.length) { this.stocksTableBody.innerHTML = '<tr><td colspan="6" class="empty-state">该板块暂无股票数据</td></tr>'; return; }
+                stocks.forEach((s, i) => {
+                    const tr = document.createElement('tr');
+                    if (i < 3) tr.classList.add('highlight');
+                    const level = this.getProbabilityLevel(s.aiProbability);
+                    const warnTxt = this.getWarnTypeText(s.f630);
+                    const warnCls = s.f630 >= 4 ? 'warn-stop' : 'warn-price';
+                    const isGem = this.isGemStock(s.f12);
+                    const realCls = this.getChangeColorClass(s.f3);
+                    const bidCls = this.getChangeColorClass(s.f615);
+                    tr.innerHTML = `
+                        <td><div class="stock-info">
+                            <div class="stock-name clickable" data-code="${s.f12}" data-name="${s.f14}">${s.f14}${isGem ? '<span class="gem-label">创</span>' : ''}</div>
+                            <div class="stock-code" data-code="${s.f12}">${s.f12}</div>
+                        </div></td>
+                        <td><span class="stock-block">${s.blockName}</span></td>
+                        <td><div class="probability-cell"><div class="probability-bar"><div class="probability-fill ${level}" style="width:${s.aiProbability}%"></div></div><span class="probability-value ${level}">${s.aiProbability}%</span></div></td>
+                        <td class="${bidCls}">${s.f615 >= 0 ? '+' : ''}${(s.f615 || 0).toFixed(2)}%</td>
+                        <td class="${realCls}">${s.f3 >= 0 ? '+' : ''}${(s.f3 || 0).toFixed(2)}%</td>
+                        <td><span class="warn-tag ${warnCls}">${warnTxt}</span></td>`;
+                    // 绑定股票名称点击事件（原有通达信协议联动）
+                    tr.querySelector('.stock-name.clickable').addEventListener('click', () => this.openInTdx(s.f12, s.f14));
+                    // 绑定股票代码点击事件（新增指定链接跳转）
+                    tr.querySelector('.stock-code').addEventListener('click', (e) => {
+                        const stockCode = e.target.dataset.code;
+                        window.location.href = `http://www.treeid/code_${stockCode}`;
+                    });
+                    this.stocksTableBody.appendChild(tr);
+                });
+                this.stockCount.textContent = stocks.length;
+            }
+            updateTopStocks() {
+                if (!this.allStocks.length) return;
+                const filtered = this.filterStocks(this.allStocks);
+                const sortBy = this.sortSelect.value;
+                let sorted = [...filtered];
+                switch (sortBy) {
+                    case 'probability': sorted.sort((a, b) => b.aiProbability - a.aiProbability); break;
+                    case 'strength': sorted.sort((a, b) => b.blockStrength - a.blockStrength); break;
+                    case 'bidChange': sorted.sort((a, b) => b.f615 - a.f615); break;
+                    case 'realChange': sorted.sort((a, b) => b.f3 - a.f3); break;
+                }
+                this.topStocks = sorted.slice(0, 10);
+                this.renderTopStocks();
+            }
+            renderTopStocks() {
+                this.topStocksTableBody.innerHTML = '';
+                this.topStocks.forEach((s, i) => {
+                    const tr = document.createElement('tr');
+                    const level = this.getProbabilityLevel(s.aiProbability);
+                    const warnTxt = this.getWarnTypeText(s.f630);
+                    const warnCls = s.f630 >= 4 ? 'warn-stop' : 'warn-price';
+                    const isGem = this.isGemStock(s.f12);
+                    const realCls = this.getChangeColorClass(s.f3);
+                    const bidCls = this.getChangeColorClass(s.f615);
+                    tr.innerHTML = `
+                        <td class="rank-cell">${i + 1}</td>
+                        <td><div class="stock-info">
+                            <div class="stock-name clickable" data-code="${s.f12}" data-name="${s.f14}">${s.f14}${isGem ? '<span class="gem-label">创</span>' : ''}</div>
+                            <div class="stock-code" data-code="${s.f12}">${s.f12}</div>
+                        </div></td>
+                        <td><span class="stock-block">${s.blockName}</span></td>
+                        <td><div class="top-probability-cell"><div class="top-probability-bar"><div class="top-probability-fill ${level}" style="width:${s.aiProbability}%"></div></div><span class="probability-value ${level}">${s.aiProbability}%</span></div></td>
+                        <td class="${bidCls}">${s.f615 >= 0 ? '+' : ''}${(s.f615 || 0).toFixed(2)}%</td>
+                        <td class="${realCls}">${s.f3 >= 0 ? '+' : ''}${(s.f3 || 0).toFixed(2)}%</td>
+                        <td><span class="warn-tag ${warnCls}">${warnTxt}</span></td>
+                        <td><span>${s.blockStrength || 0}</span></td>`;
+                    // 绑定股票名称点击事件（原有通达信协议联动）
+                    tr.querySelector('.stock-name.clickable').addEventListener('click', () => this.openInTdx(s.f12, s.f14));
+                    // 绑定股票代码点击事件（新增指定链接跳转）
+                    tr.querySelector('.stock-code').addEventListener('click', (e) => {
+                        const stockCode = e.target.dataset.code;
+                        window.location.href = `http://www.treeid/code_${stockCode}`;
+                    });
+                    this.topStocksTableBody.appendChild(tr);
+                });
+                this.topStocksCount.textContent = this.topStocks.length;
+            }
+            updateBlockFilter() {
+                this.blockFilter.innerHTML = '<option value="all">全部板块</option>';
+                this.allBlocks.forEach(b => { const o = document.createElement('option'); o.value = b.f12; o.textContent = b.f14; this.blockFilter.appendChild(o); });
+            }
+            updateRefreshTime() {
+                const now = new Date();
+                this.lastRefreshTime.textContent = `最后刷新：${now.toLocaleTimeString('zh-CN', { hour12: false })}`;
+            }
+            startAutoRefresh() { setInterval(() => this.loadData(), 30000); }
+            exportToTdx() {
+                const arr = this.selectedBlock ? (this.blockStockMap.get(this.selectedBlock.f12) || []) : this.allStocks;
+                const codes = [...arr].sort((a, b) => b.aiProbability - a.aiProbability).slice(0, 10).map(s => s.f12).join('\n');
+                this.copyToClip(codes);
+            }
+            exportTop10ToTdx() {
+                if (!this.topStocks.length) return;
+                this.copyToClip(this.topStocks.map(s => s.f12).join('\n'));
+            }
+            copyToClip(text) {
+                navigator.clipboard.writeText(text).catch(() => {
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                });
+            }
+            /* ===== 新增：通达信联动 ===== */
+            openInTdx(code, name) {
+                // 优先跳转指定链接实现通达信联动
+                window.location.href = `http://www.treeid/code_${code}`;
+                // 保留原有通达信协议兜底（可选）
+                const protocols = [`tdx://${code}`, `tdxcn://${code}`, `tdxgp://${code}`, `tdxgp:${code}`];
+                setTimeout(() => {
+                    let ok = false;
+                    for (const p of protocols) { 
+                        try { 
+                            window.location.href = p; 
+                            ok = true; 
+                            break; 
+                        } catch (e) {} 
+                    }
+                    if (!ok) this.copyToClip(code);
+                }, 500);
+            }
+            /* ========================= */
+            showLoading() {}
+            showError(msg) {
+                const div = document.createElement('div');
+                div.className = 'error';
+                div.textContent = msg;
+                document.querySelector('.container').insertBefore(div, document.querySelector('.controls').nextSibling);
+                setTimeout(() => div.remove(), 5000);
+            }
+        }
+        window.addEventListener('DOMContentLoaded', () => new HotStockPicker());
+    </script>
+</body>
+</html>
