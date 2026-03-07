@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>秋辉区间计算器</title>
+    <style>
+:root.dark .switch-text:last-child { color: var(--fall-blue); font-weight: bold; } :root:not(.dark) .switch-text:first-child { color: var(--fall-blue); font-weight: bold; }
+        /* 全局样式重置 + 基础变量 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "微软雅黑", "宋体", sans-serif;
+            font-size: 20px;
+            transition: all 0.3s ease; /* 所有样式过渡动画，切换主题更丝滑 */
+        }
+
+        /* 根元素：定义明亮/暗调变量，切换时修改根类名即可 */
+        :root {
+            --bg-main: #f5f5f5;      /* 页面主背景 */
+            --bg-card: #ffffff;      /* 计算器卡片背景 */
+            --text-main: #333333;    /* 主要文字 */
+            --text-secondary: #666;  /* 次要文字 */
+            --border-light: #eee;    /* 浅色边框 */
+            --border-normal: #ddd;   /* 常规边框 */
+            --border-focus: #409eff; /* 输入框聚焦边框 */
+            --btn-red: #f56c6c;      /* 清除按钮主色 */
+            --btn-red-hover: #e64949;/* 清除按钮hover */
+            --rise-red: #f56c6c;     /* 涨幅红色 */
+            --fall-blue: #409eff;    /* 跌幅蓝色 */
+            --rise-bg: #fef0f0;      /* 涨幅标题背景 */
+            --fall-bg: #f0f9ff;      /* 跌幅标题背景 */
+            --result-line: #f8f8f8;  /* 结果项分割线 */
+            --switch-bg: #ddd;       /* 切换开关背景 */
+            --switch-btn: #fff;      /* 切换开关按钮 */
+        }
+
+        /* 暗调主题变量 */
+        :root.dark {
+            --bg-main: #1a1a1a;      /* 页面主背景-暗 */
+            --bg-card: #2d2d2d;      /* 计算器卡片背景-暗 */
+            --text-main: #e5e5e5;    /* 主要文字-暗 */
+            --text-secondary: #aaa;  /* 次要文字-暗 */
+            --border-light: #444;    /* 浅色边框-暗 */
+            --border-normal: #555;   /* 常规边框-暗 */
+            --border-focus: #66b1ff; /* 输入框聚焦边框-暗 */
+            --btn-red: #d45a5a;      /* 清除按钮主色-暗 */
+            --btn-red-hover: #c23333;/* 清除按钮hover-暗 */
+            --rise-red: #e87a7a;     /* 涨幅红色-暗 */
+            --fall-blue: #66b1ff;    /* 跌幅蓝色-暗 */
+            --rise-bg: #402828;      /* 涨幅标题背景-暗 */
+            --fall-bg: #283848;      /* 跌幅标题背景-暗 */
+            --result-line: #444;     /* 结果项分割线-暗 */
+            --switch-bg: #555;       /* 切换开关背景-暗 */
+            --switch-btn: #e5e5e5;   /* 切换开关按钮-暗 */
+        }
+
+        body {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 20px;
+            background-color: var(--bg-main); /* 使用变量 */
+            min-height: 100vh;
+        }
+
+        /* 主题切换开关容器 */
+        .theme-switch {
+            max-width: 1400px;
+            margin: 0 auto 20px;
+            text-align: right;
+            padding: 0 20px;
+        }
+
+        /* 自定义切换开关样式 */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 30px;
+            cursor: pointer;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--switch-bg);
+            border-radius: 30px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: var(--switch-btn);
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+        input:checked + .slider {
+            background-color: var(--fall-blue);
+        }
+        input:checked + .slider:before {
+            transform: translateX(30px);
+        }
+        .switch-text {
+            color: var(--text-main);
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        /* 计算器主容器 - 美化升级 */
+        .calculator-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            background: var(--bg-card);
+            padding: 40px 30px;
+            border-radius: 16px; /* 加大圆角更柔和 */
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); /* 细腻阴影 */
+        }
+
+        /* 通用列样式 */
+        .calc-column {
+            display: flex;
+            flex-direction: column;
+        }
+        .column-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-main);
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-light);
+        }
+
+        /* 输入框+清除按钮容器 */
+        .input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 1px solid var(--border-normal);
+            border-radius: 10px; /* 加大输入框圆角 */
+            outline: none;
+            background-color: transparent; /* 透明背景，适配暗调 */
+            color: var(--text-main);
+        }
+        input::placeholder {
+            color: var(--text-secondary); /* 占位符文字适配主题 */
+            font-size: 18px;
+        }
+        input:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1); /* 聚焦淡阴影，更高级 */
+        }
+
+        /* 清除按钮 - 美化升级 */
+        .clear-btn {
+            padding: 0 25px;
+            background-color: var(--btn-red);
+            color: #fff;
+            border: none;
+            border-radius: 10px; /* 加大按钮圆角 */
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .clear-btn:hover {
+            background-color: var(--btn-red-hover);
+            transform: translateY(-2px); /* 轻微上移，hover动效 */
+            box-shadow: 0 4px 8px rgba(245, 108, 108, 0.2); /* 按钮hover阴影 */
+        }
+        .clear-btn:active {
+            transform: translateY(0); /* 点击还原 */
+        }
+
+        /* 第一列：最低价结果项 */
+        .low-result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0; /* 加大行高，更舒适 */
+            border-bottom: 1px solid var(--result-line);
+        }
+        .low-result-item:last-child {
+            border-bottom: none;
+        }
+        /* 最低价倍数文字颜色样式 - 暗调适配（微调亮度） */
+        .gray { color: #999; }
+        .light-red { color: var(--rise-red); }
+        .orange-red { color: #ff9500; } /* 橙红色微调，暗调更清晰 */
+        .green { color: #74c643; }      /* 绿色微调，暗调更清晰 */
+        .red-bold { color: var(--rise-red); font-weight: bold; }
+        .green-bold { color: #74c643; font-weight: bold; }
+        .low-price { color: var(--text-main); font-weight: 500; }
+
+        /* 第二列：收盘价涨跌分栏 */
+        .rise-fall-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            flex: 1;
+        }
+        .rise-column, .fall-column {
+            display: flex;
+            flex-direction: column;
+        }
+        .rf-title {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px 5px; /* 加大内边距 */
+            border-radius: 8px; /* 加大标题圆角 */
+            font-weight: 500;
+        }
+        .rise-title {
+            background-color: var(--rise-bg);
+            color: var(--rise-red);
+        }
+        .fall-title {
+            background-color: var(--fall-bg);
+            color: var(--fall-blue);
+        }
+        .rf-result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0; /* 加大行高 */
+            border-bottom: 1px solid var(--result-line);
+        }
+        .rf-result-item:last-child {
+            border-bottom: none;
+        }
+        .rise-text { color: var(--rise-red); }
+        .fall-text { color: var(--fall-blue); }
+        .rf-price { color: var(--text-main); font-weight: 500; }
+
+        /* 响应式适配：小屏幕改为单列，适配大字体 */
+        @media (max-width: 768px) {
+            body {
+                margin: 20px auto;
+                max-width: 100%;
+            }
+            .calculator-container {
+                grid-template-columns: 1fr;
+                padding: 30px 20px;
+                gap: 30px;
+                border-radius: 12px;
+            }
+            .rise-fall-container {
+                gap: 15px;
+            }
+            input {
+                padding: 12px 15px;
+            }
+            .clear-btn {
+                padding: 0 20px;
+            }
+            .theme-switch {
+                margin-bottom: 15px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <!-- 主题切换开关 -->
+    <div class="theme-switch">
+        <span class="switch-text">明亮</span>
+        <label class="switch">
+            <input type="checkbox" id="themeToggle">
+            <span class="slider"></span>
+        </label>
+        <span class="switch-text">暗调</span>
+    </div>
+
+    <!-- 计算器主容器 -->
+    <div class="calculator-container">
+        <!-- 第一列：最低价区间计算 -->
+        <div class="calc-column" id="lowColumn">
+            <div class="column-title">最低价区间</div>
+            <div class="input-group">
+                <input type="number" id="lowPrice" placeholder="请输入最低价" step="0.01" min="0">
+                <button class="clear-btn" id="clearLow">清除</button>
+            </div>
+            <div id="lowResultBox"></div>
+        </div>
+
+        <!-- 第二列：昨日收盘价涨跌幅计算 -->
+        <div class="calc-column" id="closeColumn">
+            <div class="column-title">昨日收盘价涨跌</div>
+            <div class="input-group">
+                <input type="number" id="closePrice" placeholder="请输入昨日收盘价" step="0.01" min="0">
+                <button class="clear-btn" id="clearClose">清除</button>
+            </div>
+            <div class="rise-fall-container">
+                <div class="rise-column">
+                    <div class="rf-title rise-title">涨幅</div>
+                    <div id="riseResultBox"></div>
+                </div>
+                <div class="fall-column">
+                    <div class="rf-title fall-title">跌幅</div>
+                    <div id="fallResultBox"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===================== 主题切换逻辑 =====================
+        const themeToggle = document.getElementById('themeToggle');
+        const htmlRoot = document.documentElement;
+// 初始化：判断本地存储的主题，无则默认明亮
+if (localStorage.getItem('calcTheme') === 'dark') {
+    htmlRoot.classList.add('dark');
+    themeToggle.checked = true;
+}
+        
+
+        // 切换主题：修改根类名 + 本地存储保存设置
+        themeToggle.addEventListener('change', () => {
+            if (themeToggle.checked) {
+                htmlRoot.classList.add('dark');
+                localStorage.setItem('calcTheme', 'dark');
+            } else {
+                htmlRoot.classList.remove('dark');
+                localStorage.setItem('calcTheme', 'light');
+            }
+        });
+
+        // ===================== 第一列：最低价相关配置和逻辑 =====================
+        const lowPriceInput = document.getElementById('lowPrice');
+        const clearLowBtn = document.getElementById('clearLow');
+        const lowResultBox = document.getElementById('lowResultBox');
+        // 最低价倍数配置：[显示名称, 计算倍数, 样式类名]
+        const lowMultiples = [
+            ['0.4倍', 1.382, 'gray'],
+            ['0.5倍', 1.5, 'gray'],
+            ['0.6倍', 1.618, 'light-red'],
+            ['1倍', 2, 'orange-red'],
+            ['1.3倍', 2.382, 'orange-red'],
+            ['1.5倍', 2.5, 'orange-red'],
+            ['1.6倍', 2.618, 'orange-red'],
+            ['1.75倍', 2.75, 'green'],
+            ['2倍', 3, 'red-bold'],
+            ['2.3倍', 3.382, 'red-bold'],
+            ['2.5倍', 3.5, 'red-bold'],
+            ['2.6倍', 3.618, 'red-bold'],
+            ['2.75倍', 3.75, 'green-bold'],
+            ['3倍', 4, 'green-bold']
+        ];
+
+        // 计算并渲染最低价结果
+        function renderLowResult(price) {
+            lowResultBox.innerHTML = '';
+            if (!price || price <= 0) return;
+            lowMultiples.forEach(item => {
+                const [name, multiple, cls] = item;
+                const calcPrice = (price * multiple).toFixed(2);
+                const div = document.createElement('div');
+                div.className = 'low-result-item';
+                div.innerHTML = `<span class="${cls}">${name}</span><span class="low-price">${calcPrice}</span>`;
+                lowResultBox.appendChild(div);
+            });
+        }
+
+        // 最低价输入框实时计算
+        lowPriceInput.addEventListener('input', () => {
+            renderLowResult(Number(lowPriceInput.value));
+        });
+        // 最低价清除按钮
+        clearLowBtn.addEventListener('click', () => {
+            lowPriceInput.value = '';
+            lowResultBox.innerHTML = '';
+        });
+
+        // ===================== 第二列：昨日收盘价涨跌幅相关配置和逻辑 =====================
+        const closePriceInput = document.getElementById('closePrice');
+        const clearCloseBtn = document.getElementById('clearClose');
+        const riseResultBox = document.getElementById('riseResultBox');
+        const fallResultBox = document.getElementById('fallResultBox');
+        // 涨幅配置：[显示名称, 计算倍数]
+        const riseConfig = [
+            ['涨3', 1.03],
+            ['涨5', 1.05],
+            ['涨7', 1.07],
+            ['涨10', 1.1],
+            ['涨14', 1.14],
+            ['涨20', 1.2],
+            ['涨25', 1.25],
+            ['涨30', 1.3]
+        ];
+        // 跌幅配置：[显示名称, 计算倍数]
+        const fallConfig = [
+            ['跌3', 0.97],
+            ['跌5', 0.95],
+            ['跌7', 0.93],
+            ['跌10', 0.9],
+            ['跌14', 0.86],
+            ['跌20', 0.8],
+            ['跌25', 0.75],
+            ['跌30', 0.7]
+        ];
+
+        // 计算并渲染涨跌幅结果
+        function renderRiseFallResult(price) {
+            riseResultBox.innerHTML = '';
+            fallResultBox.innerHTML = '';
+            if (!price || price <= 0) return;
+            // 渲染涨幅
+            riseConfig.forEach(item => {
+                const [name, multiple] = item;
+                const calcPrice = (price * multiple).toFixed(2);
+                const div = document.createElement('div');
+                div.className = 'rf-result-item';
+                div.innerHTML = `<span class="rise-text">${name}</span><span class="rf-price">${calcPrice}</span>`;
+                riseResultBox.appendChild(div);
+            });
+            // 渲染跌幅
+            fallConfig.forEach(item => {
+                const [name, multiple] = item;
+                const calcPrice = (price * multiple).toFixed(2);
+                const div = document.createElement('div');
+                div.className = 'rf-result-item';
+                div.innerHTML = `<span class="fall-text">${name}</span><span class="rf-price">${calcPrice}</span>`;
+                fallResultBox.appendChild(div);
+            });
+        }
+
+        // 收盘价输入框实时计算
+        closePriceInput.addEventListener('input', () => {
+            renderRiseFallResult(Number(closePriceInput.value));
+        });
+        // 收盘价清除按钮
+        clearCloseBtn.addEventListener('click', () => {
+            closePriceInput.value = '';
+            riseResultBox.innerHTML = '';
+            fallResultBox.innerHTML = '';
+        });
+
+        // 辅助：输入框仅允许数字和小数点，防止异常输入
+        [lowPriceInput, closePriceInput].forEach(input => {
+            input.addEventListener('keydown', (e) => {
+                const forbiddenKeys = ['e', 'E', '+', '-'];
+                if (forbiddenKeys.includes(e.key)) e.preventDefault();
+            });
+        });
+    </script>
+</body>
+</html>
