@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>同花顺 · 市场概况</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        body {
+            background-color: #1e1e2f;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 5px 10px;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px 15px;
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto 10px auto;
+        }
+        .card {
+            background: rgba(20, 22, 36, 0.9);
+            backdrop-filter: blur(4px);
+            border: 1px solid #313452;
+            border-radius: 16px;
+            padding: 5px 10px;
+            box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7);
+            color: #eef2f8;
+            display: flex;
+            flex-direction: column;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #313452;
+            font-weight: 800;
+            font-size: 1.0rem;
+            color: #b0c6da;
+        }
+        .card-header span:last-child {
+            font-size: 0.8rem;
+            font-weight: 400;
+            /* background: #2a2e42; */
+            padding: 4px 12px;
+            border-radius: 40px;
+            color: #9bb8da;
+        }
+        .gauge-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 0 16px 0;
+            position: relative;
+        }
+        canvas#gaugeCanvas {
+            width: 100%;
+            max-width: 380px;
+            height: auto;
+            aspect-ratio: 2/1;
+            display: block;
+            margin: 0 auto;
+            filter: drop-shadow(0 6px 12px #00000080);
+            background: transparent;
+        }
+        .gauge-center-number {
+            background-color: transparent;
+            position: relative;
+            margin-top: -55px;
+            font-size: 2.4rem;
+            font-weight: 700;
+            backdrop-filter: blur(8px);
+            padding: 6px 28px;
+            border-radius: 60px;
+            border: 0px solid #313452;
+            z-index: 10;
+            color: #c3cad1;
+            line-height: 1.2;
+        }
+        .gauge-center-number small {
+            font-size: 1.1rem;
+            color: #a0b8cc;
+            margin-left: 6px;
+        }
+        .score-mini-tags {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            padding: 3px 20px;
+            border-radius: 3px;
+            margin-top: 5px;
+            border: 0px solid #313452;
+        }
+        .mini-tag {
+            text-align: center;
+        }
+        .mini-tag .label {
+            font-size: 0.95rem;
+            color: #8199b0;
+        }
+        .mini-tag .value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            padding-left: 5px;
+        }
+        .value.tech { color: #6fc3b0; }
+        .value.money { color: #f4b740; }
+        .value.finance { color: #c597e0; }
+        .score-comment {
+            border-radius: 0px;
+            padding: 5px 10px;
+            margin-top: 5px;
+            border-top: 1px dashed #313452;
+            color: #b2c6e0;
+            font-size: 0.95rem;
+        }
+        .turnover-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            margin-bottom: 16px;
+        }
+        .turnover-table th {
+            text-align: center;
+            color: #8fa5c0;
+            font-weight: 400;
+            padding: 5px 2px;
+            border-bottom: 0px dashed #313452;
+        }
+        .turnover-table td {
+            font-size: 13px;
+            text-align: center;
+            padding: 10px 2px;
+            border-bottom: 1px dashed #2b3148;
+            font-weight: 500;
+            color: #e1efff;
+        }
+        .turnover-chart-box {
+            height: 200px;
+            width: 100%;
+            margin: 12px 0 8px;
+        }
+        .turnover-foot {
+            display: flex;
+            justify-content: space-between;
+            color: #a0b8d0;
+            font-size: 0.9rem;
+            margin-top: 6px;
+            border-top: 1px dashed #2b3148;
+            padding: 10px 16px;
+            border-radius: 0px;
+        }
+        .dist-header {
+            display: flex;
+            justify-content: space-around;
+            background: #1b2133;
+            border-radius: 5px;
+            border: 0px solid #313452;
+            padding: 8px;
+            margin-bottom: 5px;
+        }
+        .dist-header-item {
+            text-align: center;
+        }
+        .dist-header-item .dist-label {
+            color: #8fa2c0;
+            font-size: 0.9rem;
+        }
+        .dist-header-item .dist-number {
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+        .up-number { color: #ed6f6f; }
+        .down-number { color: #6fc3b0; }
+        .flat-number { color: #d8d084; }
+        
+        /* 柱状图容器 */
+        .dist-bar-container {
+            width: 100%;
+            height: 100px;
+            margin: 15px 0 20px 0;
+            background: #141624;
+            border-radius: 12px;
+            padding: 5px;
+        }
+        canvas#distBarChart {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .dist-two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            background: #1a1f32;
+            border: 1px solid #313452;
+            border-radius: 8px;
+            padding: 10px 18px;
+            margin-top: 5px;
+        }
+        .dist-col {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .dist-two-column .dist-col:first-child {
+            margin-right: 30px;
+        }
+        .dist-col-title {
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 500;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #313452;
+            color: #a4b6cf;
+        }
+        .dist-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            padding: 5px 4px;
+            border-bottom: 1px dashed #2b3148;
+        }
+        .dist-two-column .dist-col:first-child .key {
+            color: #ff4747;
+        }
+        .dist-row .key {
+            color: #71c016;
+        }
+        .dist-row .value { font-weight: 500; }
+        .up-value { color: #ed6f6f; }
+        .down-value { color: #6fc3b0; }
+        .flat-value { color: #d8d084; }
+        
+        /* 底部全局时间 */
+        .dashboard-footer {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            text-align: right;
+            color: #7489ab;
+            font-size: 0.9rem;
+            padding: 12px 16px;
+            border-top: 1px dashed #313452;
+            background: transparent;
+        }
+
+        .trend-chart-container {
+            height: 180px;
+            width: 100%;
+            margin-bottom: 18px;
+        }
+        .trend-table-wrap {
+            max-height: 246px;
+            overflow-y: auto;
+            border: 1px solid #313452;
+            border-radius: 8px;
+            background: #181d2e;
+        }
+        .trend-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+        .trend-table th {
+            position: sticky;
+            top: 0;
+            background: #1b2133;
+            color: #a4b6cf;
+            font-weight: 500;
+            padding: 8px 2px;
+            border-bottom: 1px solid #313452;
+        }
+        .trend-table td {
+            font-size: 13px;
+            padding: 6px 2px;
+            border-bottom: 1px dashed #2b324a;
+        }
+        .trend-table .rise-color { color: #ed6f6f; font-weight: 500; }
+        .trend-table .limit-color { color: #f4b740; }
+        .trend-table .down-color { color: #6fc3b0; }
+        .error-message {
+            background: #3a2f42;
+            border: 1px solid #a0667a;
+            border-radius: 24px;
+            padding: 16px;
+            color: #fbc0c0;
+            text-align: center;
+        }
+        .loading-placeholder {
+            color: #6b82a3;
+            text-align: center;
+            padding: 30px 10px;
+        }
+
+        .trend-table-wrap::-webkit-scrollbar {
+            width: 6px; height: 6px;
+        }
+        .trend-table-wrap::-webkit-scrollbar-thumb {
+            border-radius: 5px;
+            -webkit-box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+            background: #272f49;
+        }
+        .trend-table-wrap::-webkit-scrollbar-track {
+            -webkit-box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+            border-radius: 0;
+            background: #121212;
+        }
+        .trend-table-wrap::-webkit-scrollbar-thumb:hover {
+            background-color: #364163;
+        }
+        
+        @media (max-width: 900px) {
+            .dashboard { grid-template-columns: 1fr; }
+        }        
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- 左上：大盘评分表盘 (刻度和指针已完全修正) -->
+        <div class="card">
+            <div class="card-header"><span>📊 大盘评分</span><span id="scoreUpdateTime">--</span></div>
+            <div class="gauge-wrapper">
+                <canvas id="gaugeCanvas" width="600" height="300"></canvas>
+                <div class="gauge-center-number"><span id="sumScore">0.0</span><small>综合评分</small></div>
+            </div>
+            <div class="score-mini-tags">
+                <div class="mini-tag"><span class="label">技术面</span><span class="value tech" id="techScore">0.0</span></div>
+                <div class="mini-tag"><span class="label">资金面</span><span class="value money" id="financeScore">0.0</span></div>
+                <div class="mini-tag"><span class="label">货币</span><span class="value finance" id="moneyScore">0.0</span></div>
+            </div>
+            <div class="score-comment" id="scoreContent">加载点评…</div>
+        </div>
+
+        <!-- 右上：市场成交额 -->
+        <div class="card">
+            <div class="card-header"><span>💰 市场成交额</span><span id="turnoverTime">--</span></div>
+            <div id="turnoverTableContainer">
+                <table class="turnover-table">
+                    <thead><tr><th>总成交额</th><th>预测全天成交额</th><th>昨日总成交额</th><th>预测全天增减</th></tr></thead>
+                    <tbody id="turnoverTableBody"><tr><td colspan="4" class="loading-placeholder">加载中…</td></tr></tbody>
+                </table>
+            </div>
+            <div class="turnover-chart-box"><canvas id="turnoverChart"></canvas></div>
+            <div class="turnover-foot" id="turnoverFoot"><span>近60日: --</span><span>最新: --</span></div>
+        </div>
+
+        <!-- 左下：涨跌分布 -->
+        <div class="card">
+            <div class="card-header"><span>📈 涨跌分布</span><span id="distUpdateTime">--</span></div>
+            <div id="distHeaderArea" class="dist-header"><!--动态--></div>
+            <!-- 柱状图容器 -->
+            <div class="dist-bar-container">
+                <canvas id="distBarChart"></canvas>
+            </div>
+            <div id="distTwoCol" class="dist-two-column"><!--动态--></div>
+        </div>
+
+        <!-- 右下：涨跌趋势 -->
+        <div class="card">
+            <div class="card-header"><span>⏳ 涨跌趋势 (日内)</span><span id="trendUpdateTime">--</span></div>
+            <div class="trend-chart-container"><canvas id="trendCanvas"></canvas></div>
+            <div id="trendTableWrap" class="trend-table-wrap"><!--动态--></div>
+        </div>
+    </div>
+
+    <!-- 全局底部：显示涨跌分布更新时间 -->
+    <div class="dashboard-footer" id="dashboardFooter">更新时间: --</div>
+
+    <script>
+        (function () {
+            // ----- 常量与工具函数 -----
+            const SCORE_API = 'https://dq.10jqka.com.cn/fuyao/market_analysis_api/score/v1/get_market_score';//市场得分
+            const TURNOVER_API = 'https://dq.10jqka.com.cn/fuyao/market_analysis_api/chart/v1/get_chart_data?chart_key=turnover_minute';//市场成交额
+            const DISTRIBUTION_API = 'https://dq.10jqka.com.cn/fuyao/up_down_distribution/distribution/v2/realtime';//涨跌分布
+            const TREND_API = 'https://dq.10jqka.com.cn/fuyao/market_analysis_api/chart/v1/get_chart_data?chart_key=limit_up_minute';//涨跌趋势
+
+            // DOM
+            const scoreUpdateSpan = document.getElementById('scoreUpdateTime');
+            const sumScoreSpan = document.getElementById('sumScore');
+            const techSpan = document.getElementById('techScore');
+            const moneySpan = document.getElementById('moneyScore');
+            const financeSpan = document.getElementById('financeScore');
+            const scoreCommentDiv = document.getElementById('scoreContent');
+            const gaugeCanvas = document.getElementById('gaugeCanvas');
+
+            const turnoverTimeSpan = document.getElementById('turnoverTime');
+            const turnoverTableBody = document.getElementById('turnoverTableBody');
+            const turnoverChartCanvas = document.getElementById('turnoverChart');
+            const turnoverFoot = document.getElementById('turnoverFoot');
+
+            const distUpdateSpan = document.getElementById('distUpdateTime');
+            const distHeaderArea = document.getElementById('distHeaderArea');
+            const distTwoCol = document.getElementById('distTwoCol');
+            const distBarCanvas = document.getElementById('distBarChart');
+            const dashboardFooter = document.getElementById('dashboardFooter');
+
+            const trendUpdateSpan = document.getElementById('trendUpdateTime');
+            const trendCanvas = document.getElementById('trendCanvas');
+            const trendTableWrap = document.getElementById('trendTableWrap');
+
+            let turnoverChart = null, trendChart = null;
+
+            function formatTimeFromTimestamp(ts) {
+                const d = new Date(ts);
+                return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+            }
+
+            function formatAmount(val) {
+                if (val === null || val === undefined) return '--';
+                const num = Number(val);
+                if (isNaN(num)) return '--';
+                const yi = num / 1e8;
+                if (yi >= 10000) return (yi / 10000).toFixed(1) + '万亿';
+                if (yi >= 1000) return (yi / 1000).toFixed(1) + '千亿';
+                return yi.toFixed(0) + '亿';
+            }
+
+            function formatAmountChange(val) {
+                if (val === null || val === undefined) return '--';
+                const num = Number(val) / 1e8;
+                return (num > 0 ? '+' : '') + num.toFixed(0) + '亿';
+            }
+
+            // ========== 表盘绘制（完美修正 Y 轴方向） ==========
+            function drawGauge(sumValue) {
+                const canvas = gaugeCanvas;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const w = canvas.width, h = canvas.height;
+                ctx.clearRect(0, 0, w, h);
+
+                const centerX = w / 2;
+                const centerY = h * 0.65;
+                const radius = Math.min(w, h) * 0.35;
+
+                // 1. 上半圆背景弧（从 π 到 0，顺时针）
+                const gradient = ctx.createLinearGradient(centerX - radius, centerY - radius, centerX + radius, centerY - radius);
+                gradient.addColorStop(0, '#4DAA8C');
+                gradient.addColorStop(0.35, '#F4B740');
+                gradient.addColorStop(0.65, '#F4B740');
+                gradient.addColorStop(1, '#E86A6A');
+
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, Math.PI, 0, false);
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = 24;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+
+                // 2. 主刻度线 (0,2,4,6,8,10) 及数字 (Y轴用减法)
+                ctx.save();
+                for (let i = 0; i <= 10; i += 2) {
+                    const angle = Math.PI - (i / 10) * Math.PI;
+                    const startX = centerX + Math.cos(angle) * (radius + 20);
+                    const startY = centerY - Math.sin(angle) * (radius + 20);
+                    const endX   = centerX + Math.cos(angle) * (radius + 40);
+                    const endY   = centerY - Math.sin(angle) * (radius + 40);
+
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 4;
+                    ctx.stroke();
+
+                    const tx = centerX + Math.cos(angle) * (radius + 65);
+                    const ty = centerY - Math.sin(angle) * (radius + 35);
+                    ctx.fillStyle = '#F0F4FA';
+                    ctx.font = 'bold 20px "Inter", "Segoe UI", monospace';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(i.toString(), tx, ty);
+                }
+
+                // 3. 短刻度线 (1,3,5,7,9)
+                for (let i = 1; i <= 9; i += 2) {
+                    const angle = Math.PI - (i / 10) * Math.PI;
+                    const startX = centerX + Math.cos(angle) * (radius + 30);
+                    const startY = centerY - Math.sin(angle) * (radius + 30);
+                    const endX   = centerX + Math.cos(angle) * (radius + 20);
+                    const endY   = centerY - Math.sin(angle) * (radius + 20);
+
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.strokeStyle = '#CCDDFF';
+                    ctx.lineWidth = 2.5;
+                    ctx.stroke();
+                }
+                ctx.restore();
+
+                // 4. 指针
+                const score = Math.min(10, Math.max(0, sumValue));
+                const ptrAngle = Math.PI - (score / 10) * Math.PI;
+                const tipX = centerX + Math.cos(ptrAngle) * (radius - 40);
+                const tipY = centerY - Math.sin(ptrAngle) * (radius - 40);
+
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(tipX, tipY);
+                ctx.strokeStyle = '#FFFAFA';
+                ctx.lineWidth = 8;
+                ctx.lineCap = 'round';
+                ctx.shadowBlur = 0;
+                ctx.stroke();
+
+                const backX = centerX + Math.cos(ptrAngle) * (radius - 56);
+                const backY = centerY - Math.sin(ptrAngle) * (radius - 56);
+                const leftX  = backX + Math.cos(ptrAngle + Math.PI / 2) * 14;
+                const leftY  = backY - Math.sin(ptrAngle + Math.PI / 2) * 14;
+                const rightX = backX + Math.cos(ptrAngle - Math.PI / 2) * 14;
+                const rightY = backY - Math.sin(ptrAngle - Math.PI / 2) * 14;
+
+                ctx.beginPath();
+                ctx.moveTo(tipX, tipY);
+                ctx.lineTo(leftX, leftY);
+                ctx.lineTo(rightX, rightY);
+                ctx.closePath();
+                ctx.fillStyle = '#FFE484';
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 16, 0, 2 * Math.PI);
+                ctx.fillStyle = '#18222E';
+                ctx.fill();
+                ctx.strokeStyle = '#B0C6E0';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+
+            drawGauge(0);
+
+            // ----- 大盘评分 -----
+            async function loadScore() {
+                try {
+                    const data = await fetchJSON(SCORE_API);
+                    if (!data) throw new Error();
+                    const sum = data.sum_score ?? data.sum_socre ?? 0;
+                    sumScoreSpan.textContent = sum.toFixed(1);
+                    techSpan.textContent = (data.tech_score || 0).toFixed(1);
+                    moneySpan.textContent = (data.money_score || 0).toFixed(1);
+                    financeSpan.textContent = (data.finance_score || 0).toFixed(1);
+                    scoreCommentDiv.textContent = data.score_content || '暂无点评';
+                    scoreUpdateSpan.textContent = data.update_time ? data.update_time.slice(5, 16) : '--';
+                    drawGauge(sum);
+                } catch (e) {
+                    sumScoreSpan.textContent = '0.0';
+                    techSpan.textContent = '0.0';
+                    moneySpan.textContent = '0.0';
+                    financeSpan.textContent = '0.0';
+                    scoreCommentDiv.textContent = '评分数据暂不可用';
+                    scoreUpdateSpan.textContent = '--';
+                    drawGauge(0);
+                }
+            }
+
+            // ----- 成交额 -----
+            async function loadTurnover() {
+                try {
+                    const data = await fetchJSON(TURNOVER_API);
+                    if (!data?.charts) throw new Error();
+                    const charts = data.charts;
+                    const pointList = charts.point_list || [];
+                    const validPoints = pointList.filter(p => p[1] != null);
+                    if (validPoints.length === 0) throw new Error('无成交额数据');
+
+                    const last = validPoints[validPoints.length - 1];
+                    const turnover = last[1];
+                    const pre = last[2];
+                    const predictHeader = charts.header?.find(h => h.key === 'predict_turnover');
+                    const predict = predictHeader ? predictHeader.val : 0;
+                    const change = predict - (pre || 0);
+
+                    turnoverTableBody.innerHTML = `<tr>
+                        <td>${formatAmount(turnover)}</td>
+                        <td>${formatAmount(predict)}</td>
+                        <td>${formatAmount(pre)}</td>
+                        <td>${formatAmountChange(change)}</td>
+                    </tr>`;
+
+                    const near60 = charts.near60_days_avg ? formatAmount(charts.near60_days_avg) : '--';
+                    turnoverFoot.innerHTML = `<span>近60日: ${near60}</span><span>最新: ${formatAmount(turnover)}</span>`;
+
+                    const labels = charts.x_label_list || pointList.map((p, idx) => idx % 10 === 0 ? formatTimeFromTimestamp(p[0]) : '');
+                    const turnoverData = pointList.map(p => p[1] ? p[1] / 1e8 : null);
+                    const preData = pointList.map(p => p[2] ? p[2] / 1e8 : null);
+
+                    if (turnoverChart) turnoverChart.destroy();
+                    turnoverChart = new Chart(turnoverChartCanvas.getContext('2d'), {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                { label: '当日成交额', data: turnoverData, borderColor: '#f4b740', backgroundColor: 'transparent', tension: 0.1, pointRadius: 0, borderWidth: 1 },
+                                { label: '昨日成交额', data: preData, borderColor: '#7b9ec0', backgroundColor: 'transparent', tension: 0.1, pointRadius: 0, borderWidth: 1, borderDash: [4, 3] }
+                            ]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { labels: { color: '#b0c2da', usePointStyle: true, pointStyle: 'line' } } },
+                            scales: {
+                                x: { ticks: { maxTicksLimit: 8, color: '#8fa5c0' }, grid: { color: '#313452' } },
+                                y: { ticks: { color: '#b0c2da' }, grid: { color: '#313452' } }
+                            }
+                        }
+                    });
+                    turnoverTimeSpan.textContent = charts.mtime ? charts.mtime.slice(5, 16) : '--';
+                } catch (e) {
+                    turnoverTableBody.innerHTML = `<tr><td colspan="4" class="error-message">成交额数据异常</td></tr>`;
+                }
+            }
+
+            // ----- 绘制柱状图 (基于table数据) -----
+            function drawDistributionBarChart(tableData) {
+                if (!distBarCanvas || !tableData || tableData.length < 11) return;
+                const ctx = distBarCanvas.getContext('2d');
+                const w = distBarCanvas.clientWidth || 400;
+                const h = distBarCanvas.clientHeight || 100;
+                distBarCanvas.width = w;
+                distBarCanvas.height = h;
+
+                ctx.clearRect(0, 0, w, h);
+
+                // 提取数值
+                const values = tableData.map(item => item.value || 0);
+                const maxVal = Math.max(...values, 1); // 防止除以0
+
+                // 柱子参数
+                const barCount = values.length;
+                const gap = 6; // 间隙像素
+                const totalGaps = (barCount - 1) * gap;
+                const barWidth = (w - totalGaps) / barCount;
+                const baseY = h - 15; // 底部留空写数值
+                const maxHeight = h - 30; // 柱子最大高度
+
+                // 颜色定义：前5下跌，第6平盘，后5上涨
+                const colors = [
+                    '#6fc3b0', '#6fc3b0', '#6fc3b0', '#6fc3b0', '#6fc3b0', // 跌
+                    '#d8d084', // 平盘
+                    '#ed6f6f', '#ed6f6f', '#ed6f6f', '#ed6f6f', '#ed6f6f'  // 涨
+                ];
+
+                for (let i = 0; i < barCount; i++) {
+                    const x = i * (barWidth + gap);
+                    const barHeight = (values[i] / maxVal) * maxHeight;
+                    const y = baseY - barHeight;
+
+                    // 画柱子
+                    ctx.fillStyle = colors[i];
+                    ctx.fillRect(x, y, barWidth, barHeight);
+
+                    // 显示数值
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = 'bold 10px "Inter", monospace';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText(values[i], x + barWidth/2, y - 2);
+                }
+
+                // 画底部区间标签简写
+                ctx.fillStyle = '#a0b8d0';
+                ctx.font = '9px "Inter", sans-serif';
+                ctx.textAlign = 'center';
+                const labels = ['>10%', '10~7', '7~5', '5~3', '3~0', '0', '0~3', '3~5', '5~7', '7~10', '>10%'];
+                for (let i = 0; i < barCount; i++) {
+                    const x = i * (barWidth + gap) + barWidth/2;
+                    ctx.fillText(labels[i], x, h - 2);
+                }
+            }
+
+            // ----- 涨跌分布 (包含柱状图绘制，更新时间移至底部) -----
+            async function loadDistribution() {
+                try {
+                    const data = await fetchJSON(DISTRIBUTION_API);
+                    if (!data) throw new Error();
+                    const { up, down, flat, limit_up, limit_down, table, last_update_time } = data;
+
+                    // 头部统计
+                    distHeaderArea.innerHTML = `
+                        <div class="dist-header-item"><div class="dist-label">上涨</div><div class="dist-number up-number">${up}</div></div>
+                        <div class="dist-header-item"><div class="dist-label">下跌</div><div class="dist-number down-number">${down}</div></div>
+                        <div class="dist-header-item"><div class="dist-label">平盘</div><div class="dist-number flat-number">${flat}</div></div>
+                        <div class="dist-header-item"><div class="dist-label">涨停</div><div class="dist-number up-number">${limit_up}</div></div>
+                        <div class="dist-header-item"><div class="dist-label">跌停</div><div class="dist-number down-number">${limit_down}</div></div>
+                    `;
+
+                    if (!Array.isArray(table) || table.length < 11) throw new Error('table格式异常');
+
+                    // 绘制柱状图
+                    drawDistributionBarChart(table);
+
+                    // 解构数据用于下方列表
+                    const [
+                        downOver10, down10to7, down7to5, down5to3, down3to0,
+                        flatValue,
+                        up0to3, up3to5, up5to7, up7to10, upOver10
+                    ] = table.map(item => item.value || 0);
+
+                    const upMapping = [
+                        { display: '>10%' },    // 涨>10%
+                        { display: '7 ~ 10' },   // 涨7~10%
+                        { display: '5 ~ 7' },     // 涨5~7%
+                        { display: '3 ~ 5' },     // 涨3~5%
+                        { display: '0 ~ 3' },     // 涨0~3%
+                        { display: '0' }          // 平盘
+                    ];
+                    const upValues = [upOver10, up7to10, up5to7, up3to5, up0to3, flatValue];
+
+                    const downMapping = [
+                        { display: '>10%' },      // 跌>10%
+                        { display: '10~7' },      // 跌10~7%
+                        { display: '7~5' },       // 跌7~5%
+                        { display: '5~3' },       // 跌5~3%
+                        { display: '3~0' }        // 跌3~0%
+                    ];
+                    const downValues = [downOver10, down10to7, down7to5, down5to3, down3to0];
+
+                    let upRows = '';
+                    upMapping.forEach((m, idx) => {
+                        upRows += `<div class="dist-row"><span class="key">${m.display}</span><span class="value up-value">${upValues[idx]}</span></div>`;
+                    });
+
+                    let downRows = '';
+                    downMapping.forEach((m, idx) => {
+                        downRows += `<div class="dist-row"><span class="key">${m.display}</span><span class="value down-value">${downValues[idx]}</span></div>`;
+                    });
+
+                    distTwoCol.innerHTML = `
+                        <div class="dist-col"><div class="dist-col-title">📈 上涨数统计</div>${upRows}</div>
+                        <div class="dist-col"><div class="dist-col-title">📉 下跌数统计</div>${downRows}</div>
+                    `;
+
+                    // 更新头部时间和底部全局时间
+                    distUpdateSpan.textContent = last_update_time ? last_update_time.slice(5, 16) : '--';
+                    dashboardFooter.textContent = `涨跌更新时间: ${last_update_time || '--'}`;
+                } catch (e) {
+                    distHeaderArea.innerHTML = `<div class="error-message">分布数据异常</div>`;
+                    distTwoCol.innerHTML = '';
+                    dashboardFooter.textContent = '涨跌更新时间: --';
+                }
+            }
+
+            // ----- 涨跌趋势 -----
+            // ----- 涨跌趋势 -----
+			async function loadTrend() {
+				try {
+					const data = await fetchJSON(TREND_API);
+					if (!data?.charts) throw new Error();
+					const charts = data.charts;
+					const pointList = charts.point_list || [];
+					const xLabels = charts.x_label_list || [];
+			
+					const step = 5;
+					const sampledLabels = [], sampledRise = [], sampledDown = []; // 新增下跌数组
+					for (let i = 0; i < pointList.length; i += step) {
+						const p = pointList[i];
+						if (p && p.length >= 2) {
+							sampledLabels.push(xLabels[i] || formatTimeFromTimestamp(p[0]));
+							sampledRise.push(p[1]);
+							sampledDown.push(p[2]); // 收集下跌家数
+						}
+					}
+			
+					if (trendChart) trendChart.destroy();
+					trendChart = new Chart(trendCanvas.getContext('2d'), {
+						type: 'line',
+						data: {
+							labels: sampledLabels,
+							datasets: [
+								{ 
+									label: '上涨家数', 
+									data: sampledRise, 
+									borderColor: '#ed6f6f', // 红色
+									backgroundColor: 'transparent', 
+									pointRadius: 0.5, 
+									borderWidth: 1, 
+									tension: 0.2 
+								},
+								{ // 新增下跌家数曲线
+									label: '下跌家数', 
+									data: sampledDown, 
+									borderColor: '#6fc3b0', // 绿色（和下跌数值颜色一致）
+									backgroundColor: 'transparent', 
+									pointRadius: 0.5, 
+									borderWidth: 1, 
+									tension: 0.2 
+								}
+							]
+						},
+						options: {
+							responsive: true, maintainAspectRatio: false,
+							plugins: { 
+								legend: { 
+									labels: { 
+										color: '#ccc', 
+										usePointStyle: true, 
+										pointStyle: 'line' 
+									} 
+								} 
+							},
+							scales: {
+								x: { ticks: { maxTicksLimit: 10, color: '#8fa5c0' }, grid: { color: '#313452' } },
+								y: { ticks: { color: '#b0c2da' }, grid: { color: '#313452' } }
+							}
+						}
+					});
+			
+					let tableRows = '';
+					const reversed = [...pointList].reverse();
+					const showCount = Math.min(reversed.length, 60);
+					for (let i = 0; i < showCount; i++) {
+						const p = reversed[i];
+						if (!p) continue;
+						const timeIdx = pointList.length - 1 - i;
+						const timeStr = (xLabels && xLabels[timeIdx]) ? xLabels[timeIdx] : formatTimeFromTimestamp(p[0]);
+						tableRows += `<tr><td>${timeStr}</td><td class="rise-color">${p[1]}</td><td class="down-color">${p[2]}</td><td class="limit-color">${p[3]}</td><td class="down-color">${p[4]}</td></tr>`;
+					}
+					trendTableWrap.innerHTML = `<table class="trend-table"><thead><tr><th>时间</th><th>上涨</th><th>下跌</th><th>涨停</th><th>跌停</th></tr></thead><tbody>${tableRows}</tbody></table>`;
+					trendUpdateSpan.textContent = charts.mtime ? charts.mtime.slice(5, 16) : '--';
+				} catch (e) {
+					trendTableWrap.innerHTML = `<div class="error-message">趋势数据暂不可用</div>`;
+				}
+			}
+
+            // 通用fetch
+            async function fetchJSON(url) {
+                const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const json = await res.json();
+                if (json.status_code !== 0) throw new Error(json.status_msg);
+                return json.data;
+            }
+
+            function isTradingTime() {
+                const now = new Date();
+                const day = now.getDay();
+                if (day === 0 || day === 6) return false;
+                const h = now.getHours();
+                return h >= 9 && h < 18;
+            }
+
+            async function loadAll() {
+                await Promise.allSettled([loadScore(), loadTurnover(), loadDistribution(), loadTrend()]);
+            }
+
+            loadAll();
+            setInterval(() => {
+                if (isTradingTime()) loadAll();
+            }, 60000);
+        })();
+    </script>
+</body>
+</html>
