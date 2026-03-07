@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连板晋级</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #000000;
+            padding: 10px;
+            color: #ffffff;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .board-row {
+            display: flex;
+            border-bottom: 1px solid #e0e0e0;
+            margin: 0;
+        }
+        
+        .board-column {
+            flex: 1;
+            padding: 6px;
+        }
+        
+        .board-column:first-child {
+            border-right: 1px solid #e0e0e0;
+        }
+        
+        .board-header {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 0 0 3px 0;
+            padding: 2px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .board-header.left {
+            background-color: #f5f5f5;
+            color: #000000;
+        }
+        
+        .board-header.right {
+            background-color: #fff0f0;
+            color: #ff0000;
+        }
+        
+        .arrow {
+            font-size: 14px;
+            color: #999;
+        }
+        
+        .stock-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            padding: 0;
+            border-bottom: 1px solid #f0f0f0;
+            margin: 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 4px;
+        }
+        
+        .stock-item:hover {
+            background-color: #e8f0fe;
+            transform: translateX(4px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stock-name {
+            padding: 3px 0 3px 6px;
+            flex: 1;
+            font-size: 11px;
+        }
+        
+        .stock-change {
+            padding: 3px 8px;
+            border-radius: 0;
+            font-weight: bold;
+            width: 70px;
+            text-align: right;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            font-size: 11px;
+        }
+        
+        .stock-board-info {
+            font-size: 10px;
+            color: #666;
+            background-color: #f5f5f5;
+            padding: 1px 6px;
+            border-radius: 10px;
+            margin-left: 8px;
+            white-space: nowrap;
+        }
+        
+        .stock-change-limit {
+            color: #ffffff !important;
+            background: linear-gradient(135deg, #ff4d4f, #c62828);
+        }
+        
+        .stock-change-up {
+            color: #ff4d4f;
+            background: rgba(255, 77, 79, 0.1);
+        }
+        
+        .stock-change-down {
+            color: #4caf50 !important;
+            background: rgba(76, 175, 80, 0.1);
+        }
+        
+        .stock-change-limit-down {
+            color: #ffffff !important;
+            background: linear-gradient(135deg, #4caf50, #2e7d32);
+        }
+        
+        .stock-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .stock-name {
+            font-size: 14px;
+            color: #000000;
+        }
+        
+        .stock-change {
+            font-size: 14px;
+            color: #ff0000;
+            font-weight: bold;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        /* 美化滚动栏 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+    <script>
+        // API接口地址
+        const API_BASE = 'https://flash-api.xuangubao.cn/api';
+        
+        // 格式化涨跌幅为百分比
+        function formatChangeRate(rate) {
+            const value = rate * 100;
+            let className = '';
+            let prefix = '';
+            
+            if (value < 0) {
+                className = 'stock-change-down';
+                prefix = '';
+            } else if (value >= 19.9) {
+                // 20cm涨停股票
+                className = 'stock-change-limit';
+                prefix = '+';
+            } else if (value >= 9.9) {
+                // 10cm涨停股票
+                className = 'stock-change-limit';
+                prefix = '+';
+            } else {
+                // 上涨股票
+                className = 'stock-change-up';
+                prefix = '+';
+            }
+            
+            return `<span class="stock-change ${className}">${prefix}${value.toFixed(2)}%</span>`;
+        }
+        
+        // 加载股票数据
+        async function loadStockData() {
+            const container = document.querySelector('.container');
+            
+            // 保存当前滚动位置
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            
+            try {
+                // 并行获取昨日涨停、今日涨停和今日股票数据
+                const [yesterdayResponse, todayLimitUpResponse, todayStockResponse] = await Promise.all([
+                    fetch(`https://flash-api.xuangubao.com.cn/api/pool/detail?pool_name=yesterday_limit_up`),
+                    fetch(`https://flash-api.xuangubao.com.cn/api/pool/detail?pool_name=limit_up`),
+                    fetch(`${API_BASE}/surge_stock/stocks?normal=true&uplimit=true`)
+                ]);
+                
+                const yesterdayData = await yesterdayResponse.json();
+                const todayLimitUpData = await todayLimitUpResponse.json();
+                const todayStockData = await todayStockResponse.json();
+                
+                // 处理今日涨停数据，提取涨停股票代码集合
+                const todayLimitUpStockCodes = new Set();
+                if (todayLimitUpData.code === 20000 && todayLimitUpData.data) {
+                    todayLimitUpData.data.forEach(item => {
+                        if (item.symbol) {
+                            todayLimitUpStockCodes.add(item.symbol);
+                        }
+                    });
+                }
+                
+                // 处理昨日数据
+                let yesterdayStocks = [];
+                if (yesterdayData.code === 20000 && yesterdayData.data) {
+                    yesterdayStocks = yesterdayData.data.map(item => {
+                        const stock = {
+                            code: item.symbol,
+                            prod_name: item.stock_chi_name,
+                            px_change_rate: item.change_percent,
+                            cur_price: item.price,
+                            limit_up_days: item.yesterday_limit_up_days || item.m_days_n_boards_boards || 1,
+                            m_days_n_boards: item.m_days_n_boards_boards && item.m_days_n_boards_days ? `${item.m_days_n_boards_days}天${item.m_days_n_boards_boards}板` : ''
+                        };
+                        // 添加是否在今日涨停池的标志
+                        stock.is_limit_up = todayLimitUpStockCodes.has(stock.code);
+                        return stock;
+                    });
+                    
+                    // 过滤掉ST股
+                    yesterdayStocks = yesterdayStocks.filter(stock => 
+                        !stock.prod_name || !stock.prod_name.includes('ST')
+                    );
+                }
+                
+                // 处理今日股票数据
+                let todayStocks = [];
+                if (todayStockData.code === 20000 && todayStockData.data && todayStockData.data.items) {
+                    const fields = todayStockData.data.fields;
+                    todayStocks = todayStockData.data.items.map(item => {
+                        const stock = {};
+                        fields.forEach((field, index) => {
+                            stock[field] = item[index];
+                        });
+                        // 添加是否涨停的标志
+                        const stockCode = stock.stock_code || stock.symbol || stock.code;
+                        stock.is_limit_up = todayLimitUpStockCodes.has(stockCode);
+                        return stock;
+                    });
+                    
+                    // 过滤掉ST股
+                    todayStocks = todayStocks.filter(stock => 
+                        !stock.prod_name || !stock.prod_name.includes('ST')
+                    );
+                    
+                    // 提取今日股票代码，用于调用连续涨停数据接口
+                    const todayStockCodes = todayStocks.map(stock => 
+                        stock.stock_code || stock.symbol || stock.code
+                    ).filter(code => code);
+                    
+                    // 调用连续涨停数据接口
+                    if (todayStockCodes.length > 0) {
+                        const symbols = todayStockCodes.join(',');
+                        const apiUrl = `https://flash-api.xuangubao.cn/api/stock/data?fields=symbol,stock_chi_name,change_percent,price,limit_up_days&strict=true&symbols=${symbols}`;
+                        
+                        try {
+                            const stockResponse = await fetch(apiUrl);
+                            const stockData = await stockResponse.json();
+                            
+                            if (stockData.code === 20000 && stockData.data) {
+                                let limitUpDataArray = [];
+                                
+                                // 处理API返回的数据
+                                if (Array.isArray(stockData.data)) {
+                                    limitUpDataArray = stockData.data;
+                                } else if (typeof stockData.data === 'object' && stockData.data !== null) {
+                                    limitUpDataArray = Object.values(stockData.data);
+                                }
+                                
+                                // 将连续涨停天数更新到todayStocks中
+                                limitUpDataArray.forEach(limitUpData => {
+                                    const stock = todayStocks.find(stock => {
+                                        const stockCode = stock.stock_code || stock.symbol || stock.code;
+                                        return stockCode && limitUpData.symbol && stockCode.includes(limitUpData.symbol);
+                                    });
+                                    
+                                    if (stock) {
+                                        stock.limit_up_days = limitUpData.limit_up_days || 1;
+                                    }
+                                });
+                            }
+                        } catch (error) {
+                            console.error('获取连续涨停数据失败:', error);
+                        }
+                    }
+                }
+                
+                // 分组股票数据
+                const yesterdayGroups = groupStocksByBoardLevel(yesterdayStocks);
+                const todayGroups = groupStocksByBoardLevel(todayStocks);
+                
+                // 渲染数据
+                renderStocks('.container', yesterdayGroups, todayGroups);
+                
+                // 恢复滚动位置
+                window.scrollTo(0, scrollTop);
+            } catch (error) {
+                console.error('加载股票数据失败:', error);
+            }
+        }
+        
+        // 提取连板数（数字）
+        function getLimitUpDaysNumber(limitUpDaysText) {
+            if (!limitUpDaysText) return 1; // 默认1板
+            // 提取数字部分（支持"3连板"、"2天"、"5板"等格式）
+            const match = limitUpDaysText.match(/\d+/);
+            return match ? parseInt(match[0]) : 1;
+        }
+        
+        // 分组股票数据（按涨停板级别）
+        function groupStocksByBoardLevel(stocks) {
+            const groups = {};
+            
+            // 遍历所有涨停股票
+            stocks.forEach(stock => {
+                // 使用已经提取好的limit_up_days字段
+                const boardCount = stock.limit_up_days || 1; // 默认1板
+                
+                // 根据板数分组
+                const key = `${boardCount}板`;
+                if (!groups[key]) {
+                    groups[key] = [];
+                }
+                groups[key].push(stock);
+            });
+            
+            // 对每个分组内的股票排序：涨停的优先，然后按涨跌幅降序
+            Object.keys(groups).forEach(key => {
+                groups[key].sort((a, b) => {
+                    // 首先比较是否涨停（基于是否在今日涨停池）
+                    const isLimitUpA = a.is_limit_up || false;
+                    const isLimitUpB = b.is_limit_up || false;
+                    
+                    if (isLimitUpA && !isLimitUpB) return -1;
+                    if (!isLimitUpA && isLimitUpB) return 1;
+                    
+                    // 如果都涨停或都不涨停，按涨跌幅降序排序
+                    const changeA = a.px_change_rate || 0;
+                    const changeB = b.px_change_rate || 0;
+                    return changeB - changeA;
+                });
+            });
+            
+            return groups;
+        }
+        
+        // 处理股票点击事件，实现通达信联动
+        function handleStockClick(stockCode) {
+            // 去除股票代码后缀（如.SS, .SZ等）
+            const cleanCode = stockCode.replace(/\.[^.]+$/, '');
+            // 构建联动URL
+            const linkUrl = `http://www.treeid/code_${cleanCode}`;
+            // 触发联动
+            window.location.href = linkUrl;
+        }
+        
+        // 渲染股票数据
+        function renderStocks(selector, yesterdayGroups, todayGroups) {
+            const container = document.querySelector(selector);
+            
+            // 创建一个新的临时容器
+            const tempContainer = document.createElement('div');
+            
+            // 提取所有板数级别并排序
+            const boardLevels = new Set();
+            
+            // 收集昨日所有板数级别
+            Object.keys(yesterdayGroups).forEach(key => {
+                const boardCount = parseInt(key.replace('板', ''));
+                boardLevels.add(boardCount);
+            });
+            
+            // 收集今日所有板数级别
+            Object.keys(todayGroups).forEach(key => {
+                const boardCount = parseInt(key.replace('板', ''));
+                boardLevels.add(boardCount - 1); // 今日的N连板对应昨日的N-1连板
+            });
+            
+            // 转换为数组并按从大到小排序
+            const sortedLevels = Array.from(boardLevels).sort((a, b) => b - a);
+            
+            // 为每个板数级别生成板块（跳过1板，单独处理）
+            sortedLevels.forEach(boardLevel => {
+                // 跳过1板，单独处理
+                if (boardLevel === 1) return;
+                
+                // 跳过0或负数的板数级别
+                if (boardLevel < 1) return;
+                
+                // 昨日的N连板对应今日的N+1连板
+                const yesterdayKey = `${boardLevel}板`;
+                const todayKey = `${boardLevel + 1}板`;
+                const yesterdayStocks = yesterdayGroups[yesterdayKey] || [];
+                const todayStocks = todayGroups[todayKey] || [];
+                
+                // 只有当有股票数据时才显示板块
+                if (yesterdayStocks.length > 0 || todayStocks.length > 0) {
+                    const boardRow = document.createElement('div');
+                    boardRow.className = 'board-row';
+                    
+                    // 构建板块HTML
+                    boardRow.innerHTML = `
+                        <div class="board-column">
+                            <div class="board-header left">
+                                <span>昨日${boardLevel}连板(${yesterdayStocks.length})</span>
+                                <span class="arrow">→</span>
+                            </div>
+                            ${yesterdayStocks.map(stock => {
+                                const value = (stock.px_change_rate || 0) * 100;
+                                let changeClass = '';
+                                if (value <= -9.9) {
+                                    changeClass = 'stock-change-limit-down';
+                                } else if (value < 0) {
+                                    changeClass = 'stock-change-down';
+                                } else if (stock.is_limit_up) {
+                                    changeClass = 'stock-change-limit';
+                                } else {
+                                    changeClass = 'stock-change-up';
+                                }
+                                return `
+                                    <div class="stock-item" data-code="${stock.code || ''}">
+                                        <div style="display: flex; align-items: center;">
+                                            <span class="stock-name">${stock.prod_name || '未知'}</span>
+                                            ${stock.m_days_n_boards && !stock.m_days_n_boards.includes('首板') && !stock.m_days_n_boards.includes('天1板') && !stock.m_days_n_boards.includes('2天2板') && !stock.m_days_n_boards.includes('3天3板') && !stock.m_days_n_boards.includes('4天4板') && !stock.m_days_n_boards.includes('5天5板') ? `<span class="stock-board-info">${stock.m_days_n_boards}</span>` : ''}
+                                        </div>
+                                        <span class="stock-change ${changeClass}">${value < 0 ? '' : '+'}${value.toFixed(2)}%</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <div class="board-column">
+                            <div class="board-header right">
+                                <span>今日${boardLevel + 1}连板(${todayStocks.length})</span>
+                                <span class="arrow">→</span>
+                            </div>
+                            ${todayStocks.map(stock => {
+                                const value = ((stock.px_change_rate || stock.change_percent || 0) * 100);
+                                let changeClass = '';
+                                if (value <= -9.9) {
+                                    changeClass = 'stock-change-limit-down';
+                                } else if (value < 0) {
+                                    changeClass = 'stock-change-down';
+                                } else if (stock.is_limit_up) {
+                                    changeClass = 'stock-change-limit';
+                                } else {
+                                    changeClass = 'stock-change-up';
+                                }
+                                return `
+                                    <div class="stock-item" data-code="${stock.code || stock.stock_code || stock.symbol || ''}">
+                                        <div style="display: flex; align-items: center;">
+                                            <span class="stock-name">${stock.prod_name || stock.stock_chi_name || '未知'}</span>
+                                            ${stock.m_days_n_boards && !stock.m_days_n_boards.includes('首板') && !stock.m_days_n_boards.includes('天1板') && !stock.m_days_n_boards.includes('2天2板') && !stock.m_days_n_boards.includes('3天3板') && !stock.m_days_n_boards.includes('4天4板') && !stock.m_days_n_boards.includes('5天5板') ? `<span class="stock-board-info">${stock.m_days_n_boards}</span>` : ''}
+                                        </div>
+                                        <span class="stock-change ${changeClass}">${value < 0 ? '' : '+'}${value.toFixed(2)}%</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                    
+                    tempContainer.appendChild(boardRow);
+                }
+            });
+            
+            // 特别处理首板（1板）
+            const yesterday1BoardStocks = yesterdayGroups['1板'] || [];
+            const today2BoardStocks = todayGroups['2板'] || [];
+            
+            if (yesterday1BoardStocks.length > 0 || today2BoardStocks.length > 0) {
+                const board1Row = document.createElement('div');
+                board1Row.className = 'board-row';
+                board1Row.innerHTML = `
+                    <div class="board-column">
+                        <div class="board-header left">
+                            <span>昨日首板(${yesterday1BoardStocks.length})</span>
+                            <span class="arrow">→</span>
+                        </div>
+                        ${yesterday1BoardStocks.map(stock => {
+                            const value = (stock.px_change_rate || 0) * 100;
+                            let changeClass = '';
+                            if (value <= -9.9) {
+                                changeClass = 'stock-change-limit-down';
+                            } else if (value < 0) {
+                                changeClass = 'stock-change-down';
+                            } else if (stock.is_limit_up) {
+                                changeClass = 'stock-change-limit';
+                            } else {
+                                changeClass = 'stock-change-up';
+                            }
+                            return `
+                                <div class="stock-item" data-code="${stock.code || ''}">
+                                    <div style="display: flex; align-items: center;">
+                                        <span class="stock-name">${stock.prod_name || '未知'}</span>
+                                        ${stock.m_days_n_boards && !stock.m_days_n_boards.includes('首板') && !stock.m_days_n_boards.includes('天1板') && !stock.m_days_n_boards.includes('2天2板') && !stock.m_days_n_boards.includes('3天3板') && !stock.m_days_n_boards.includes('4天4板') && !stock.m_days_n_boards.includes('5天5板') ? `<span class="stock-board-info">${stock.m_days_n_boards}</span>` : ''}
+                                    </div>
+                                    <span class="stock-change ${changeClass}">${value < 0 ? '' : '+'}${value.toFixed(2)}%</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div class="board-column">
+                        <div class="board-header right">
+                            <span>今日2连板(${today2BoardStocks.length})</span>
+                            <span class="arrow">→</span>
+                        </div>
+                        ${today2BoardStocks.map(stock => {
+                            const value = ((stock.px_change_rate || stock.change_percent || 0) * 100);
+                            let changeClass = '';
+                            if (value <= -9.9) {
+                                changeClass = 'stock-change-limit-down';
+                            } else if (value < 0) {
+                                changeClass = 'stock-change-down';
+                            } else if (stock.is_limit_up) {
+                                changeClass = 'stock-change-limit';
+                            } else {
+                                changeClass = 'stock-change-up';
+                            }
+                            return `
+                                <div class="stock-item" data-code="${stock.code || stock.stock_code || stock.symbol || ''}">
+                                    <div style="display: flex; align-items: center;">
+                                        <span class="stock-name">${stock.prod_name || stock.stock_chi_name || '未知'}</span>
+                                        ${stock.m_days_n_boards && !stock.m_days_n_boards.includes('首板') && !stock.m_days_n_boards.includes('天1板') && !stock.m_days_n_boards.includes('2天2板') && !stock.m_days_n_boards.includes('3天3板') && !stock.m_days_n_boards.includes('4天4板') && !stock.m_days_n_boards.includes('5天5板') ? `<span class="stock-board-info">${stock.m_days_n_boards}</span>` : ''}
+                                    </div>
+                                    <span class="stock-change ${changeClass}">${value < 0 ? '' : '+'}${value.toFixed(2)}%</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+                tempContainer.appendChild(board1Row);
+            }
+            
+            // 为所有股票项添加点击事件
+            tempContainer.querySelectorAll('.stock-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const stockCode = this.getAttribute('data-code');
+                    if (stockCode) {
+                        handleStockClick(stockCode);
+                    }
+                });
+            });
+            
+            // 一次性替换容器内容，减少DOM操作次数
+            container.innerHTML = '';
+            container.appendChild(tempContainer);
+        }
+        
+        // 获取昨天的日期（格式：YYYYMMDD）
+        function getYesterdayDate() {
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+            const year = yesterday.getFullYear();
+            const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+            const day = String(yesterday.getDate()).padStart(2, '0');
+            return year + month + day;
+        }
+        
+        // 页面加载完成后加载数据
+        window.onload = function() {
+            loadStockData();
+            // 设置自动刷新，每30秒刷新一次
+            setInterval(loadStockData, 30000);
+        };
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="loading">加载中...</div>
+    </div>
+</body>
+</html>
