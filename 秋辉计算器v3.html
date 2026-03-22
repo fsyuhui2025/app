@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>秋辉区间计算器</title>
+    <style>
+        /* 全局样式重置 + 基础变量 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "微软雅黑", "宋体", sans-serif;
+            font-size: 20px;
+            transition: all 0.3s ease;
+        }
+
+        :root {
+            --bg-main: #f5f5f5;
+            --bg-card: #ffffff;
+            --text-main: #333333;
+            --text-secondary: #666;
+            --border-light: #eee;
+            --border-normal: #ddd;
+            --border-focus: #409eff;
+            --btn-red: #f56c6c;
+            --btn-red-hover: #e64949;
+            --rise-red: #f56c6c;
+            --fall-blue: #409eff;
+            --rise-bg: #fef0f0;
+            --fall-bg: #f0f9ff;
+            --result-line: #f8f8f8;
+            --switch-bg: #ddd;
+            --switch-btn: #fff;
+        }
+
+        :root.dark {
+            --bg-main: #1a1a1a;
+            --bg-card: #2d2d2d;
+            --text-main: #e5e5e5;
+            --text-secondary: #aaa;
+            --border-light: #444;
+            --border-normal: #555;
+            --border-focus: #66b1ff;
+            --btn-red: #d45a5a;
+            --btn-red-hover: #c23333;
+            --rise-red: #e87a7a;
+            --fall-blue: #66b1ff;
+            --rise-bg: #402828;
+            --fall-bg: #283848;
+            --result-line: #444;
+            --switch-bg: #555;
+            --switch-btn: #e5e5e5;
+        }
+
+        body {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 20px;
+            background-color: var(--bg-main);
+            min-height: 100vh;
+        }
+
+        /* 顶部控制栏：主题 + 模式切换 */
+        .top-bar {
+            max-width: 1400px;
+            margin: 0 auto 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        /* 主题开关 */
+        .theme-switch {
+            display: flex;
+            align-items: center;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 30px;
+            cursor: pointer;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--switch-bg);
+            border-radius: 30px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px; width: 22px;
+            left: 4px; bottom: 4px;
+            background-color: var(--switch-btn);
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+        input:checked + .slider { background-color: var(--fall-blue); }
+        input:checked + .slider:before { transform: translateX(30px); }
+        .switch-text {
+            color: var(--text-main);
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        :root.dark .switch-text:last-child {
+            color: var(--fall-blue);
+            font-weight: bold;
+        }
+        :root:not(.dark) .switch-text:first-child {
+            color: var(--fall-blue);
+            font-weight: bold;
+        }
+
+        /* 模式切换按钮 */
+        .mode-switch {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .mode-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            background: var(--bg-card);
+            color: var(--text-main);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-size: 18px;
+        }
+        .mode-btn.active {
+            background: var(--fall-blue);
+            color: #fff;
+            font-weight: bold;
+        }
+
+        /* 计算器容器 */
+        .calculator-container {
+            background: var(--bg-card);
+            padding: 40px 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            display: none;
+        }
+        .calculator-container.show {
+            display: block;
+        }
+
+        /* 双列布局 */
+        .calc-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .calc-column {
+            display: flex;
+            flex-direction: column;
+        }
+        .column-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-main);
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-light);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 1px solid var(--border-normal);
+            border-radius: 10px;
+            outline: none;
+            background: transparent;
+            color: var(--text-main);
+        }
+        input::placeholder {
+            color: var(--text-secondary);
+            font-size: 18px;
+        }
+        input:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(64,158,255,0.1);
+        }
+
+        .clear-btn {
+            padding: 0 25px;
+            background-color: var(--btn-red);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .clear-btn:hover {
+            background-color: var(--btn-red-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(245,108,108,0.2);
+        }
+        .clear-btn:active {
+            transform: translateY(0);
+        }
+
+        /* 结果样式 */
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--result-line);
+        }
+        .result-item:last-child { border-bottom: none; }
+        .gray { color: #999; }
+        .light-red { color: var(--rise-red); }
+        .orange-red { color: #ff9500; }
+        .green { color: #74c643; }
+        .red-bold { color: var(--rise-red); font-weight: bold; }
+        .green-bold { color: #74c643; font-weight: bold; }
+        .price { color: var(--text-main); font-weight: 500; }
+
+        /* 涨跌栏 */
+        .rise-fall-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .rf-title {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        .rise-title { background: var(--rise-bg); color: var(--rise-red); }
+        .fall-title { background: var(--fall-bg); color: var(--fall-blue); }
+        .rise-text { color: var(--rise-red); }
+        .fall-text { color: var(--fall-blue); }
+
+        /* 新计算器专用 */
+        .new-calc-box {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .calc-desc {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+        .result-box {
+            margin-top: 20px;
+        }
+        .formula-text {
+            color: var(--fall-blue);
+            font-weight: bold;
+        }
+
+        /* ---------------- 普通计算器样式 ---------------- */
+        .normal-calc {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .calc-screen {
+            background: var(--bg-main);
+            border: 1px solid var(--border-normal);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: right;
+            margin-bottom: 20px;
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        #calc-input {
+            font-size: 22px;
+            color: var(--text-main);
+            word-break: break-all;
+        }
+        .calc-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        .calc-btn {
+            padding: 15px 0;
+            border: none;
+            border-radius: 10px;
+            background: var(--bg-main);
+            color: var(--text-main);
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .calc-btn.opt {
+            background: var(--fall-bg);
+            color: var(--fall-blue);
+        }
+        .calc-btn.eq {
+            background: var(--fall-blue);
+            color: #fff;
+        }
+        .calc-btn.clr {
+            background: var(--rise-bg);
+            color: var(--rise-red);
+        }
+
+        @media (max-width: 768px) {
+            .calc-grid { grid-template-columns: 1fr; }
+            .calculator-container { padding: 30px 20px; }
+            .top-bar { flex-direction: column; align-items: center; }
+            .mode-btn { padding: 6px 10px; font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 顶部栏：主题切换 + 模式切换 -->
+<div class="top-bar">
+    <div class="theme-switch">
+        <span class="switch-text">明亮</span>
+        <label class="switch">
+            <input type="checkbox" id="themeToggle">
+            <span class="slider"></span>
+        </label>
+        <span class="switch-text">暗调</span>
+    </div>
+
+    <div class="mode-switch">
+        <button class="mode-btn active" data-target="calc1">秋辉计算器</button>
+        <button class="mode-btn" data-target="calc2">回调支撑计算器</button>
+        <button class="mode-btn" data-target="calc3">主力成本计算器</button>
+        <button class="mode-btn" data-target="calc4">普通计算器</button>
+    </div>
+</div>
+
+<!-- ================== 计算器1：原版 ================== -->
+<div class="calculator-container show" id="calc1">
+    <div class="calc-grid">
+        <div class="calc-column">
+            <div class="column-title">最低价区间</div>
+            <div class="input-group">
+                <input type="number" id="lowPrice" placeholder="请输入最低价" step="0.01" min="0">
+                <button class="clear-btn" id="clearLow">清除</button>
+            </div>
+            <div id="lowResultBox"></div>
+        </div>
+
+        <div class="calc-column">
+            <div class="column-title">昨日收盘价涨跌</div>
+            <div class="input-group">
+                <input type="number" id="closePrice" placeholder="请输入昨日收盘价" step="0.01" min="0">
+                <button class="clear-btn" id="clearClose">清除</button>
+            </div>
+            <div class="rise-fall-container">
+                <div class="rise-column">
+                    <div class="rf-title rise-title">涨幅</div>
+                    <div id="riseResultBox"></div>
+                </div>
+                <div class="fall-column">
+                    <div class="rf-title fall-title">跌幅</div>
+                    <div id="fallResultBox"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================== 计算器2：回调支撑计算器 ================== -->
+<div class="calculator-container" id="calc2">
+    <div class="new-calc-box">
+        <div class="column-title"> 回调区间计算器</div>
+        <div class="calc-desc">公式：<span class="formula-text">(最高价 − 最低价) ÷ 3 + 最低价</span></div>
+        
+        <div class="input-group">
+            <input type="number" id="highPrice" placeholder="请输入最高价" step="0.01" min="0">
+        </div>
+        <div class="input-group">
+            <input type="number" id="lowPrice2" placeholder="请输入最低价" step="0.01" min="0">
+            <button class="clear-btn" id="clearNewCalc">清除</button>
+        </div>
+        <div class="result-box" id="newCalcResult"></div>
+    </div>
+</div>
+
+<!-- ================== 计算器3：主力成本计算器 ================== -->
+<div class="calculator-container" id="calc3">
+    <div class="new-calc-box">
+        <div class="column-title">主力成本计算器</div>
+        <div class="calc-desc">公式：成本=(现价+最低价)/2×1.3  涨幅空间=成本×2</div>
+        
+        <div class="input-group">
+            <input type="number" id="nowPrice" placeholder="请输入现价" step="0.01" min="0">
+        </div>
+        <div class="input-group">
+            <input type="number" id="lowPrice3" placeholder="请输入最低价" step="0.01" min="0">
+            <button class="clear-btn" id="clearMain">清除</button>
+        </div>
+        <div class="result-box" id="mainResult"></div>
+    </div>
+</div>
+
+<!-- ================== 计算器4：普通计算器 ================== -->
+<div class="calculator-container" id="calc4">
+    <div class="normal-calc">
+        <div class="column-title">普通计算器</div>
+        <div class="calc-screen">
+            <div id="calc-input">0</div>
+        </div>
+        <div class="calc-buttons">
+            <button class="calc-btn clr" onclick="clearCalc()">清除</button>
+            <button class="calc-btn clr" onclick="backSpace()">←</button>
+            <button class="calc-btn opt" onclick="append('%')">%</button>
+            <button class="calc-btn opt" onclick="append('/')">÷</button>
+            
+            <button class="calc-btn" onclick="append('7')">7</button>
+            <button class="calc-btn" onclick="append('8')">8</button>
+            <button class="calc-btn" onclick="append('9')">9</button>
+            <button class="calc-btn opt" onclick="append('*')">×</button>
+            
+            <button class="calc-btn" onclick="append('4')">4</button>
+            <button class="calc-btn" onclick="append('5')">5</button>
+            <button class="calc-btn" onclick="append('6')">6</button>
+            <button class="calc-btn opt" onclick="append('-')">−</button>
+            
+            <button class="calc-btn" onclick="append('1')">1</button>
+            <button class="calc-btn" onclick="append('2')">2</button>
+            <button class="calc-btn" onclick="append('3')">3</button>
+            <button class="calc-btn opt" onclick="append('+')">+</button>
+            
+            <button class="calc-btn" onclick="append('0')">0</button>
+            <button class="calc-btn" onclick="append('.')">.</button>
+            <button class="calc-btn eq" onclick="calculate()">=</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============== 主题切换（默认暗调） ==============
+    const themeToggle = document.getElementById('themeToggle');
+    const htmlRoot = document.documentElement;
+    if (localStorage.getItem('calcTheme') !== 'light') {
+        htmlRoot.classList.add('dark');
+        themeToggle.checked = true;
+    }
+    themeToggle.addEventListener('change', () => {
+        themeToggle.checked ? htmlRoot.classList.add('dark') : htmlRoot.classList.remove('dark');
+        localStorage.setItem('calcTheme', themeToggle.checked ? 'dark' : 'light');
+    });
+
+    // ============== 模式切换 ==============
+    const modeBtns = document.querySelectorAll('.mode-btn');
+    const calcs = document.querySelectorAll('.calculator-container');
+    modeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const target = btn.dataset.target;
+            modeBtns.forEach(b => b.classList.remove('active'));
+            calcs.forEach(c => c.classList.remove('show'));
+            btn.classList.add('active');
+            document.getElementById(target).classList.add('show');
+        });
+    });
+
+    // ============== 原版计算器逻辑 ==============
+    const lowPriceInput = document.getElementById('lowPrice');
+    const clearLowBtn = document.getElementById('clearLow');
+    const lowResultBox = document.getElementById('lowResultBox');
+    const lowMultiples = [
+        ['0.4倍',1.382,'gray'],['0.5倍',1.5,'gray'],['0.6倍',1.618,'light-red'],
+        ['1倍',2,'orange-red'],['1.3倍',2.382,'orange-red'],['1.5倍',2.5,'orange-red'],['1.6倍',2.618,'orange-red'],
+        ['1.75倍',2.75,'green'],['2倍',3,'red-bold'],['2.3倍',3.382,'red-bold'],['2.5倍',3.5,'red-bold'],
+        ['2.6倍',3.618,'red-bold'],['2.75倍',3.75,'green-bold'],['3倍',4,'green-bold']
+    ];
+    function renderLowResult(price){
+        lowResultBox.innerHTML='';if(!price||price<=0)return;
+        lowMultiples.forEach(([name,mul,cls])=>{
+            const p=(price*mul).toFixed(2);
+            lowResultBox.innerHTML+=`<div class="result-item"><span class="${cls}">${name}</span><span class="price">${p}</span></div>`;
+        });
+    }
+    lowPriceInput.addEventListener('input',()=>renderLowResult(Number(lowPriceInput.value)));
+    clearLowBtn.addEventListener('click',()=>{lowPriceInput.value='';lowResultBox.innerHTML='';});
+
+    const closePriceInput=document.getElementById('closePrice');
+    const clearCloseBtn=document.getElementById('clearClose');
+    const riseResultBox=document.getElementById('riseResultBox');
+    const fallResultBox=document.getElementById('fallResultBox');
+    const riseConfig=[['涨3',1.03],['涨5',1.05],['涨7',1.07],['涨10',1.1],['涨14',1.14],['涨20',1.2],['涨25',1.25],['涨30',1.3]];
+    const fallConfig=[['跌3',0.97],['跌5',0.95],['跌7',0.93],['跌10',0.9],['跌14',0.86],['跌20',0.8],['跌25',0.75],['跌30',0.7]];
+    function renderRiseFall(price){
+        riseResultBox.innerHTML='';fallResultBox.innerHTML='';if(!price||price<=0)return;
+        riseConfig.forEach(([n,m])=>{riseResultBox.innerHTML+=`<div class="result-item"><span class="rise-text">${n}</span><span class="price">${(price*m).toFixed(2)}</span></div>`;});
+        fallConfig.forEach(([n,m])=>{fallResultBox.innerHTML+=`<div class="result-item"><span class="fall-text">${n}</span><span class="price">${(price*m).toFixed(2)}</span></div>`;});
+    }
+    closePriceInput.addEventListener('input',()=>renderRiseFall(Number(closePriceInput.value)));
+    clearCloseBtn.addEventListener('click',()=>{closePriceInput.value='';riseResultBox.innerHTML='';fallResultBox.innerHTML='';});
+
+    // ============== 高低价计算器 ==============
+    const highPrice=document.getElementById('highPrice');
+    const lowPrice2=document.getElementById('lowPrice2');
+    const clearNewCalc=document.getElementById('clearNewCalc');
+    const newCalcResult=document.getElementById('newCalcResult');
+    function calcNew(){
+        const h=Number(highPrice.value);
+        const l=Number(lowPrice2.value);
+        newCalcResult.innerHTML='';
+        if(!h||!l||h<=l)return;
+        const res=((h-l)/3 + l).toFixed(2);
+        newCalcResult.innerHTML=`
+        <div class="result-item">
+            <span>计算结果</span>
+            <span class="price" style="color:var(--fall-blue);font-weight:bold;">${res}</span>
+        </div>`;
+    }
+    highPrice.addEventListener('input',calcNew);
+    lowPrice2.addEventListener('input',calcNew);
+    clearNewCalc.addEventListener('click',()=>{
+        highPrice.value='';lowPrice2.value='';newCalcResult.innerHTML='';
+    });
+
+    // ============== 主力成本计算器 ==============
+    const nowPrice = document.getElementById('nowPrice');
+    const lowPrice3 = document.getElementById('lowPrice3');
+    const clearMain = document.getElementById('clearMain');
+    const mainResult = document.getElementById('mainResult');
+    function calcMain(){
+        const now = Number(nowPrice.value);
+        const low = Number(lowPrice3.value);
+        mainResult.innerHTML = '';
+        if(!now || !low) return;
+        const cost = ((now + low)/2 * 1.3).toFixed(2);
+        const rise = (cost * 2).toFixed(2);
+        mainResult.innerHTML = `
+            <div class="result-item"><span>主力成本</span><span class="price" style="color:var(--rise-red);font-weight:bold;">${cost}</span></div>
+            <div class="result-item"><span>涨幅空间</span><span class="price" style="color:var(--fall-blue);font-weight:bold;">${rise}</span></div>
+        `;
+    }
+    nowPrice.addEventListener('input',calcMain);
+    lowPrice3.addEventListener('input',calcMain);
+    clearMain.addEventListener('click',()=>{
+        nowPrice.value='';lowPrice3.value='';mainResult.innerHTML='';
+    });
+
+    // ============== 普通计算器 ==============
+    let input = document.getElementById('calc-input');
+    function append(val){
+        if(input.innerText === '0') input.innerText = val;
+        else input.innerText += val;
+    }
+    function clearCalc(){ input.innerText = '0'; }
+    function backSpace(){ input.innerText = input.innerText.slice(0,-1) || '0'; }
+    function calculate(){
+        try{
+            let exp = input.innerText.replace(/×/g,'*').replace(/÷/g,'/');
+            input.innerText = Math.round(eval(exp));
+        }catch(e){
+            input.innerText = '错误';
+        }
+    }
+
+    // 禁止非法输入
+    document.querySelectorAll('input').forEach(i=>{
+        i.addEventListener('keydown',e=>{
+            if(['e','E','+','-'].includes(e.key))e.preventDefault();
+        });
+    });
+</script>
+</body>
+</html>
