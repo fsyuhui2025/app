@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>连板天梯 - 统一题材总表</title>
+<style>
+/* 样式美化 - 参考板块实时_热点解读.html */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; overflow-x: hidden; }
+
+body {
+    font-family: 'Microsoft YaHei', Arial, sans-serif;
+    background-color: #000;
+    color: #DCDCDC;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    zoom: 1.25;
+}
+
+body.brightness-adjust { filter: brightness(var(--font-brightness)); }
+
+/* 导航栏 */
+.navbar {
+    background: #5E679F;
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+    border-bottom: 2px solid #FFD700;
+}
+
+.navbar .logo {
+    font-size: 16px;
+    font-weight: bold;
+    color: #FFD700;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #111; }
+::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #777; }
+
+/* 控制栏 */
+.control-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 16px;
+    background: #0a0a0a;
+    border-bottom: 1px solid #333;
+    font-size: 11px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+.control-group { display: flex; align-items: center; gap: 6px; }
+
+.control-label {
+    font-weight: 600;
+    color: #FFD700;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.current-time-label {
+    color: #FFD700;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 12px;
+}
+
+.current-time {
+    color: #ff3333;
+    font-weight: bold;
+    font-size: 11px;
+}
+
+.slider {
+    -webkit-appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: #333;
+    outline: none;
+    cursor: pointer;
+    width: 80px;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #5E679F;
+    cursor: pointer;
+}
+
+.slider-value { color: #ccc; font-size: 10px; min-width: 30px; }
+
+.date-picker {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 3px;
+    color: #ccc;
+    padding: 4px 8px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.date-picker:hover { background: #222; border-color: #FFD700; }
+
+.refresh-select {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 3px;
+    color: #ccc;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.refresh-select:hover { background: #222; border-color: #FFD700; }
+
+.refresh-btn {
+    background: #66A11B;
+    border: none;
+    color: #fff;
+    padding: 4px 12px;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.refresh-btn:hover { background: #6DDE2F; }
+
+/* 题材统计栏 */
+.theme-stats-wrap {
+    background: #0a0a0a;
+    border-bottom: 1px solid #333;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.theme-stats-label { color: #FFD700; font-weight: bold; font-size: 11px; flex: 0 0 auto; white-space: nowrap; }
+
+.limit-stats { white-space: nowrap; font-size: 11px; color: #DCDCDC; text-align: center; }
+
+.theme-stats-content { display: flex; flex-wrap: nowrap !important; white-space: nowrap !important; gap: 10px; flex: 0 0 auto; clear: both; }
+
+.theme-stat-item {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 3px;
+    padding: 4px 8px;
+    font-size: 10px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+
+.theme-stat-item:hover { background: #333; border-color: #5E679F; }
+
+.theme-stat-name { color: #FFD700; font-weight: bold; }
+
+.theme-stat-count { color: #ff3333; font-weight: bold; }
+
+.theme-stat-item.highlight { background: #2a3a5a; border: 1px solid #5E679F; }
+
+/* 题材总数折线图 */
+.theme-total-chart {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 3px;
+    padding: 4px;
+}
+
+/* 涨停数和折线图容器 */
+.limit-chart-wrap {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    margin-right: 12px;
+    gap: 6px;
+}
+
+.status-info { margin-left: auto; color: #999; font-size: 10px; display: flex; align-items: center; gap: 8px; }
+
+.current-date { color: #00ff00; font-weight: bold; }
+
+/* 主表格区域 */
+.main-table-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    background: #000;
+    padding: 0;
+}
+
+#mainBoardTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+    min-width: 1000px;
+    background-color: #1a1a1a;
+}
+
+#mainBoardTable th, #mainBoardTable td {
+    padding: 3px 5px;
+    text-align: center;
+    border: 1px solid #444;
+}
+
+#mainBoardTable th {
+    background-color: #252525;
+    color: #90caf9;
+    font-weight: bold;
+    font-size: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+#mainBoardTable tbody tr {
+    background-color: #1a1a1a;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#mainBoardTable tbody tr:hover { background-color: #333; }
+
+#mainBoardTable tbody tr.highlighted { background-color: #572626 !important; }
+
+#mainBoardTable tbody tr.hover-matched { background-color: #6B4C1E !important; }
+
+.row-board { color: #87CEEB; font-weight: bold; background: #1a1a1a !important; }
+
+.stock-name { color: #81d4fa; font-weight: 500; cursor: pointer; font-size: 10px; }
+
+.stock-name:hover { color: #fff; text-decoration: underline; }
+
+.time-red { color: #ff3333; font-weight: bold; }
+
+.time-yellow { color: #FFD700; font-weight: bold; }
+
+.reason {
+    color: #DCDCDC;
+    font-size: 10px;
+    line-height: 1.4;
+    text-align: left !important;
+}
+
+.sealed-orders { color: #cc9900; font-weight: 500; }
+
+.theme-cell { color: #ff8a65; font-weight: 500; cursor: pointer; font-size: 10px; }
+
+.theme-cell:hover { background: rgba(255, 138, 101, 0.2); border-radius: 2px; }
+
+.stat-label { background: #2d2d2d; color: #4fc3f7; font-weight: 600; text-align: center; font-size: 10px; }
+
+.theme-reason { color: #DCDCDC; font-size: 10px; line-height: 1.4; padding: 4px; text-align: left; }
+
+.theme-turnover { color: #ff3333; font-weight: bold; text-align: center; font-size: 10px; }
+
+.loading { color: #999; text-align: center; padding: 20px; font-size: 11px; }
+
+.highlight-row { outline: 2px solid #5E679F !important; outline-offset: -2px; background: rgba(94, 103, 159, 0.2) !important; }
+
+.highlight-theme { background: rgba(94, 103, 159, 0.3) !important; color: #fff !important; font-weight: bold; }
+
+.theme-stat-item canvas {
+    display: block;
+    border: 1px solid #444;
+    border-radius: 2px;
+}
+
+/* 弹窗tooltip */
+.tooltip {
+    position: fixed;
+    background: #1a1a1a;
+    border: 1px solid #B8860B;
+    padding: 8px 12px 8px 0;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #cc9900;
+    z-index: 1000;
+    width: 260px;
+    max-height: 300px;
+    overflow-y: auto;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    pointer-events: none;
+    display: none;
+    line-height: 1.6;
+    word-wrap: break-word;
+    zoom: 0.8;
+}
+.tooltip .label { color: #fff; font-weight: bold; }
+.tooltip .value { color: #cc9900; }
+.tooltip .divider { color: #555; margin: 0 6px; }
+.tooltip .analysis-section { margin-top: 8px; border-top: 1px solid #B8860B; padding-top: 8px; }
+.tooltip .info-row { white-space: normal; word-break: break-word; margin-bottom: 3px; }
+
+@media (max-width: 768px) {
+    .control-bar { flex-direction: column; align-items: flex-start; }
+    .status-info { width: 100%; margin-top: 10px; justify-content: flex-end; }
+}
+</style>
+</head>
+<body class="brightness-adjust">
+<div class="navbar">
+<span class="logo">连板天梯 - 统一题材总表</span>
+</div>
+<div class="control-bar">
+<div class="control-group"><span class="control-label">当前日期:</span>
+<span id="currentDateDisplay" class="current-date"></span>
+<span class="current-time-label">当前时间:</span>
+<span id="currentTimeDisplay" class="current-time"></span></div>
+<div class="control-group"><span class="control-label">刷新频率:</span>
+<select id="refreshSelect" class="refresh-select">
+<option value="0">手动刷新</option>
+<option value="30000">30秒</option>
+<option value="60000" selected>60秒</option>
+<option value="120000">120秒</option>
+<option value="300000">300秒</option>
+</select></div>
+<div class="control-group"><span class="control-label">字体大小</span>
+<input type="range" id="fontSizeSlider" min="10" max="24" value="14" class="slider">
+<span id="fontSizeValue" class="slider-value">14px</span></div>
+<div class="control-group"><span class="control-label">字体亮度</span>
+<input type="range" id="brightnessSlider" min="50" max="150" value="100" class="slider">
+<span id="brightnessValue" class="slider-value">100%</span></div>
+<button id="refreshBtn" class="refresh-btn">立即刷新</button>
+<div class="status-info">下次刷新: <span id="nextRefreshDisplay">--</span></div></div>
+<div class="theme-stats-wrap">
+<div class="limit-chart-wrap">
+<span class="theme-stats-label">题材统计:</span>
+<canvas id="themeTotalChart" class="theme-total-chart" width="180" height="80"></canvas>
+<span class="limit-stats" id="limitStats"></span>
+</div>
+<div class="themeStatsContent" id="themeStatsContent">
+<div class="theme-stat-item">加载中...</div></div></div>
+<div id="tooltip" class="tooltip"></div>
+<div class="main-table-wrap">
+<div id="mainLoading" class="loading">加载中...</div>
+<table id="mainBoardTable" style="display:none;">
+<thead id="mainTableHead"></thead><tbody id="mainTableBody"></tbody></table></div>
+<script>
+let refreshTimer=null;
+let currentDate='';
+let nextRefreshTime=null;
+let countdownInterval=null;
+let sectorDataCache=new Map();
+let stockSectorMap=new Map();
+let stockThemeCache=new Map();
+let currentHighlightedTheme=null;
+let boardData={
+  six_plus:[],five:[],four:[],three:[],two:[],one:[]
+};
+let downStocks=[];
+let themeHistory=new Map();
+let recordTimer=null;
+const THEME_HISTORY_KEY_PREFIX='theme_history_';
+
+function shouldClearYesterdayCache() {
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  return hour > 9 || (hour === 9 && minute >= 15);
+}
+
+function getLocalThemeHistory(dateStr) {
+  try {
+    const today = getToday();
+    const keys = Object.keys(localStorage);
+    keys.forEach(key => {
+      if (key.startsWith(THEME_HISTORY_KEY_PREFIX) && key !== THEME_HISTORY_KEY_PREFIX + today) {
+        if (shouldClearYesterdayCache()) {
+          localStorage.removeItem(key);
+        }
+      }
+    });
+    
+    const key = THEME_HISTORY_KEY_PREFIX + dateStr;
+    const data = localStorage.getItem(key);
+    if (data) {
+      const parsed = JSON.parse(data);
+      const map = new Map();
+      for (const [theme, history] of Object.entries(parsed)) {
+        map.set(theme, history);
+      }
+      return map;
+    }
+  } catch (e) {
+    console.error('Failed to read local theme history:', e);
+  }
+  return null;
+}
+
+function saveLocalThemeHistory(dateStr, historyMap) {
+  try {
+    const key = THEME_HISTORY_KEY_PREFIX + dateStr;
+    const data = Object.fromEntries(historyMap);
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    console.error('Failed to save local theme history:', e);
+  }
+}
+
+function clearOldThemeHistory() {
+  try {
+    const keys = Object.keys(localStorage);
+    const today = getToday();
+    keys.forEach(key => {
+      if (key.startsWith(THEME_HISTORY_KEY_PREFIX) && key !== THEME_HISTORY_KEY_PREFIX + today) {
+        localStorage.removeItem(key);
+      }
+    });
+  } catch (e) {
+    console.error('Failed to clear old theme history:', e);
+  }
+}
+
+function isSTStock(stockName) {
+  const stPattern = /^(ST|[*]ST|S[*]ST|SST)/;
+  return stPattern.test(stockName);
+}
+function openTdx(stockCode) {
+  if (!stockCode || stockCode.length !== 6) return;
+  const url = `http://www.treeid/code_${stockCode}`;
+  window.location.href = url;
+}
+function isTradingTime() {
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const totalMinutes = hour * 60 + minute;
+  const morningStart = 9 * 60 + 30;
+  const morningEnd = 11 * 60 + 30;
+  const afternoonStart = 13 * 60;
+  const afternoonEnd = 15 * 60;
+  return (totalMinutes >= morningStart && totalMinutes <= morningEnd) || (totalMinutes >= afternoonStart && totalMinutes <= afternoonEnd);
+}
+function canRefresh() {
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  return hour > 9 || (hour === 9 && minute >= 25);
+}
+function getNextRecordTime() {
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  let nextMinute = ((minute + 30) / 30) * 30;
+  let nextHour = hour;
+  if (nextMinute >= 60) {
+    nextMinute = 0;
+    nextHour++;
+  }
+  if (nextHour >= 11 && nextHour < 13 && nextMinute > 30) {
+    nextHour = 13;
+    nextMinute = 0;
+  }
+  const nextTime = new Date(now);
+  nextTime.setHours(nextHour, nextMinute, 0, 0);
+  return nextTime;
+}
+const KEY_TIME_POINTS = ['09:30', '10:00', '10:30', '11:00', '11:30', '13:30', '14:00', '14:30', '15:00'];
+
+// 题材涨停总数历史数据
+let themeTotalHistory = new Map();
+
+// 绘制题材涨停总数折线图
+function drawThemeTotalChart() {
+  const canvas = document.getElementById('themeTotalChart');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width;
+  const height = canvas.height;
+  const padding = { top: 5, right: 5, bottom: 5, left: 5 };
+  
+  // 清空画布
+  ctx.clearRect(0, 0, width, height);
+  
+  // 获取已到达的时间点
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const currentTotalMinutes = currentHour * 60 + currentMinute;
+  
+  const reachedTimePoints = KEY_TIME_POINTS.filter(time => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m <= currentTotalMinutes;
+  });
+  
+  if (reachedTimePoints.length === 0) {
+    return;
+  }
+  
+  // 获取数据
+  const data = reachedTimePoints.map(time => themeTotalHistory.get(time) || 0);
+  const maxCount = Math.max(...data, 1);
+  
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const stepX = chartWidth / (KEY_TIME_POINTS.length - 1);
+  
+  // 绘制网格线
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = padding.top + (chartHeight / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(width - padding.right, y);
+    ctx.stroke();
+  }
+  
+  // 绘制数据点
+  data.forEach((value, i) => {
+    const x = padding.left + (KEY_TIME_POINTS.indexOf(reachedTimePoints[i])) * stepX;
+    const y = padding.top + chartHeight - (value / maxCount) * chartHeight;
+    
+    // 数据点
+    ctx.fillStyle = '#ef5350';
+    ctx.beginPath();
+    ctx.arc(x, y, 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 连接线
+    if (i > 0) {
+      const prevX = padding.left + (KEY_TIME_POINTS.indexOf(reachedTimePoints[i - 1])) * stepX;
+      const prevY = padding.top + chartHeight - (data[i - 1] / maxCount) * chartHeight;
+      ctx.strokeStyle = '#ef5350';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(prevX, prevY);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+  });
+}
+
+function getNearestKeyTime(currentTime) {
+  const [ch, cm] = currentTime.split(':').map(Number);
+  const currentMinutes = ch * 60 + cm;
+  
+  let nearest = KEY_TIME_POINTS[0];
+  let minDiff = Infinity;
+  
+  KEY_TIME_POINTS.forEach(time => {
+    const [th, tm] = time.split(':').map(Number);
+    const timeMinutes = th * 60 + tm;
+    const diff = Math.abs(currentMinutes - timeMinutes);
+    if (diff < minDiff) {
+      minDiff = diff;
+      nearest = time;
+    }
+  });
+  
+  return nearest;
+}
+
+function recordThemeStats(stats) {
+  const now = new Date();
+  const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const keyTime = getNearestKeyTime(currentTimeStr);
+  
+  stats.forEach(([theme, count]) => {
+    if (!themeHistory.has(theme)) {
+      themeHistory.set(theme, []);
+    }
+    const history = themeHistory.get(theme);
+    const existingIndex = history.findIndex(h => h.time === keyTime);
+    
+    if (existingIndex >= 0) {
+      if (!history[existingIndex].virtual) {
+        history[existingIndex].count = count;
+      }
+    } else {
+      history.push({ time: keyTime, count: count, virtual: false });
+    }
+  });
+  
+  saveLocalThemeHistory(getToday(), themeHistory);
+  updateThemeCharts();
+}
+function setupRecordTimer() {
+  clearInterval(recordTimer);
+  const scheduleRecord = () => {
+    if (isTradingTime()) {
+      const allStocks = [...boardData.six_plus, ...boardData.five, ...boardData.four, ...boardData.three, ...boardData.two, ...boardData.one];
+      const map = new Map();
+      allStocks.forEach(s => {
+        (s.surge_reason?.related_plates || []).forEach(p => {
+          const plateName = p.plate_name || '其他';
+          if (plateName && plateName.trim() !== '') {
+            map.set(plateName, (map.get(plateName) || 0) + 1);
+          }
+        });
+      });
+      const list = Array.from(map).filter(([_, n]) => n >= 3).sort((a, b) => b[1] - a[1]);
+      recordThemeStats(list);
+    }
+    const nextTime = getNextRecordTime();
+    const delay = nextTime.getTime() - new Date().getTime();
+    if (delay > 0) {
+      recordTimer = setTimeout(scheduleRecord, delay);
+    }
+  };
+  scheduleRecord();
+}
+
+function getDefaultDate(){
+const now=new Date();const hour=now.getHours();const minute=now.getMinutes();
+if(hour<9||(hour===9&&minute<15)){const yesterday=new Date(now);yesterday.setDate(now.getDate()-1);return fmtInputDate(yesterday);}
+return fmtInputDate(now);
+}
+const refreshSelect=document.getElementById('refreshSelect');
+const refreshBtn=document.getElementById('refreshBtn');
+const currentDateDisplay=document.getElementById('currentDateDisplay');
+const currentTimeDisplay=document.getElementById('currentTimeDisplay');
+const nextRefreshDisplay=document.getElementById('nextRefreshDisplay');
+const themeStatsContent=document.getElementById('themeStatsContent');
+const limitStats=document.getElementById('limitStats');
+const mainLoading=document.getElementById('mainLoading');
+const mainBoardTable=document.getElementById('mainBoardTable');
+const mainTableHead=document.getElementById('mainTableHead');
+const mainTableBody=document.getElementById('mainTableBody');
+function initAdjustSliders(){
+const html=document.documentElement;const body=document.body;
+const fontSizeSlider=document.getElementById('fontSizeSlider');
+const fontSizeValue=document.getElementById('fontSizeValue');
+const brightnessSlider=document.getElementById('brightnessSlider');
+const brightnessValue=document.getElementById('brightnessValue');
+const savedSize=localStorage.getItem('customFontSize')||14;
+const savedBrightness=localStorage.getItem('customBrightness')||100;
+fontSizeSlider.value=savedSize;brightnessSlider.value=savedBrightness;
+html.style.fontSize=savedSize+'px';body.style.setProperty('--font-brightness',savedBrightness/100);
+fontSizeValue.textContent=savedSize+'px';brightnessValue.textContent=savedBrightness+'%';
+fontSizeSlider.addEventListener('input',()=>{const v=fontSizeSlider.value;html.style.fontSize=v+'px';fontSizeValue.textContent=v+'px';localStorage.setItem('customFontSize',v);});
+brightnessSlider.addEventListener('input',()=>{const v=brightnessSlider.value;body.style.setProperty('--font-brightness',v/100);brightnessValue.textContent=v+'%';localStorage.setItem('customBrightness',v);});
+}
+const fmtInputDate=(date)=>{const d=new Date(date);const year=d.getFullYear();const month=String(d.getMonth()+1).padStart(2,'0');const day=String(d.getDate()).padStart(2,'0');return `${year}-${month}-${day}`;};
+const getToday=()=>fmtInputDate(new Date());
+const updateDateDisplay=(dateStr)=>{currentDateDisplay.textContent=dateStr;};
+const updateTimeDisplay=()=>{
+  const now=new Date();
+  const h=String(now.getHours()).padStart(2,'0');
+  const m=String(now.getMinutes()).padStart(2,'0');
+  const s=String(now.getSeconds()).padStart(2,'0');
+  currentTimeDisplay.textContent=`${h}:${m}:${s}`;
+};
+const updateNextRefreshDisplay=(interval)=>{
+if(interval===0){nextRefreshDisplay.textContent='手动模式';return;}
+if(nextRefreshTime){const now=new Date();const diff=nextRefreshTime-now;nextRefreshDisplay.textContent=diff<=0?'刷新中...':`${Math.floor(diff/1000)}秒后`;}
+};
+const setNextRefreshTime=(interval)=>{if(interval>0)nextRefreshTime=new Date(Date.now()+interval);};
+const fmtAmount=v=>{const n=parseFloat(v||0);return n>=1e8?Math.round(n/1e8)+'亿':(n/1e4).toFixed(0)+'万';};
+const truncateTextToTwoLines=(text)=>{
+  if(!text)return '';
+  const maxLength=8;
+  return text.length>maxLength?text.substring(0,maxLength)+'..':text;
+};
+const fmtTime=ts=>{
+  if(!ts)return '--:--';
+  const d=new Date(ts*1000);
+  const h=String(d.getHours()).padStart(2,'0');
+  const m=String(d.getMinutes()).padStart(2,'0');
+  return `${h}:${m}`;
+};
+function formatStockCode(code){if(!code)return'';return code.replace(/\D/g,'').substring(0,6);}
+async function getStockSectorInfo(stockCode,stockName,reasonText){
+const key=`stock_${stockCode}`;if(stockThemeCache.has(key))return stockThemeCache.get(key);
+try{
+const fromMap=getSectorsByStockCode(stockCode);if(fromMap!=='--'){const r={theme:fromMap,source:'sectorMap'};stockThemeCache.set(key,r);return r;}
+let theme='--';if(reasonText?.trim()){
+const map={'氢能|氢能源':'氢能源','光伏|太阳能':'光伏','风电':'风电','储能':'储能','锂电池|锂电':'锂电池','半导体|芯片':'半导体','人工智能|AI':'人工智能','机器人':'机器人','医药|医疗':'医药','食品|饮料':'食品饮料','汽车|新能源车':'新能源汽车','5G|通信':'5G通信','大数据|算力':'大数据','云计算':'云计算','军工':'军工','基建':'基建','化工':'化工','有色|稀土':'有色金属','煤炭':'煤炭','电力':'电力','环保':'环保','农业':'农业','游戏':'游戏','传媒':'传媒','消费':'大消费','金融|银行':'金融','地产':'房地产','软件':'软件','物联网':'物联网','VR|AR':'虚拟现实'};
+for(const [kws,t] of Object.entries(map)){if(kws.split('|').some(kw=>reasonText.includes(kw))){theme=t;break;}}
+if(theme==='--'){theme=reasonText.split('+')[0].trim()||'--';}
+}
+const r={theme,source:'reason'};stockThemeCache.set(key,r);return r;
+}catch(e){return{theme:'--',source:'error'};}
+}
+async function fetchSectorList(date){
+const key=`sectorList_${date}`;if(sectorDataCache.has(key))return sectorDataCache.get(key);
+try{
+let url=date===getToday()?'https://flash-api.xuangubao.cn/api/surge_stock/plates':`https://flash-api.xuangubao.cn/api/surge_stock/plates?date=${Math.floor(new Date(date).getTime()/1000)}`;
+const res=await fetch(url);const data=await res.json();
+let list=[];if(data?.data?.items){list=data.data.items.filter(x=>{const n=x.name||'';return!n.includes('ST')&&n.trim()!=='';});}
+sectorDataCache.set(key,list);return list;
+}catch(e){return[];}
+}
+async function fetchSectorStocks(id,name){
+const key=`sectorStocks_${id}`;if(sectorDataCache.has(key))return sectorDataCache.get(key);
+try{
+const res=await fetch(`https://flash-api.xuangubao.cn/api/plate/plate_set?id=${id}`);
+const data=await res.json();const stocks=data?.data?.stocks||[];
+sectorDataCache.set(key,{stocks,sectorName:name});return{stocks,sectorName:name};
+}catch(e){return{stocks:[],sectorName:name};}
+}
+async function buildStockSectorMap(date){
+stockSectorMap.clear();stockThemeCache.clear();
+const sectors=await fetchSectorList(date);if(!sectors.length)return;
+const limit=10;
+for(let i=0;i<sectors.length;i+=limit){
+const chunk=sectors.slice(i,i+limit);
+const results=await Promise.allSettled(chunk.map(s=>fetchSectorStocks(s.id,s.name)));
+results.forEach(r=>{
+if(r.status==='fulfilled'){
+const {stocks,sectorName}=r.value;
+stocks.forEach(s=>{
+if(!s?.symbol)return;const code=formatStockCode(s.symbol);if(code.length!==6)return;
+let clean=sectorName;if(clean.includes('/'))clean=clean.split('/')[0].trim();
+if(stockSectorMap.has(code)){const arr=stockSectorMap.get(code);if(!arr.includes(clean))stockSectorMap.set(code,[...arr,clean]);}
+else stockSectorMap.set(code,[clean]);
+});
+}
+});
+await new Promise(r=>setTimeout(r,100));
+}
+}
+function getSectorsByStockCode(code){
+if(!code||!stockSectorMap.size)return'--';const c=formatStockCode(code);
+const arr=stockSectorMap.get(c);if(!arr?.length)return'--';
+const first=arr[0];return first.includes('/')?first.split('/')[0].trim():first;
+}
+function updateThemeStatistics(allStocks){
+themeStatsContent.innerHTML='';const map=new Map();const downMap=new Map();
+
+allStocks.forEach(s => {
+  (s.surge_reason?.related_plates||[]).forEach(p => {
+    const plateName = p.plate_name || '其他';
+    if(plateName && plateName.trim() !== ''){
+      map.set(plateName, (map.get(plateName) || 0) + 1);
+    }
+  });
+});
+
+downStocks.forEach(s => {
+  const plates = s.surge_reason?.related_plates || s.related_plates || [];
+  if (plates.length > 0) {
+    plates.forEach(p => {
+      const plateName = p.plate_name || p.name || p.plate || '其他';
+      if(plateName && plateName.trim() !== ''){
+        downMap.set(plateName, (downMap.get(plateName) || 0) + 1);
+      }
+    });
+  } else {
+    const hybk = s.hybk || s.sector || s.plate || s.industry || s.concept || s.reason || s.pool_name || '';
+    if (hybk && hybk.trim() !== '') {
+      const plateNames = hybk.split(/[;；,，、]/).map(p => p.trim()).filter(p => p && p.length > 1);
+      plateNames.forEach(name => {
+        if (name && name.trim() !== '') {
+          downMap.set(name, (downMap.get(name) || 0) + 1);
+        }
+      });
+    } else {
+      const code = formatStockCode(s.symbol);
+      let plateName = getSectorsByStockCode(code);
+      if (plateName !== '--') {
+        downMap.set(plateName, (downMap.get(plateName) || 0) + 1);
+      }
+    }
+  }
+});
+
+let otherCount = 0;
+const filteredMap = new Map();
+map.forEach((count, name) => {
+  if (name === '其他') {
+    otherCount += count;
+  } else if (count >= 2) {
+    filteredMap.set(name, count);
+  } else {
+    otherCount += count;
+  }
+});
+if (otherCount > 0) {
+  filteredMap.set('其他', otherCount);
+}
+
+const list=Array.from(filteredMap).sort((a,b)=>{
+  if(a[0]==='其他')return 1;
+  if(b[0]==='其他')return -1;
+  return b[1]-a[1];
+});
+if(!list.length){themeStatsContent.innerHTML='<div class="theme-stat-item">暂无满足条件题材</div>';return;}
+
+const now = new Date();
+const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+const reachedTimePoints = KEY_TIME_POINTS.filter(tp => {
+  const [th, tm] = tp.split(':').map(Number);
+  return th * 60 + tm <= currentMinutes;
+});
+
+const lastReachedTime = reachedTimePoints.length > 0 ? reachedTimePoints[reachedTimePoints.length - 1] : null;
+
+list.forEach(([themeName, currentCount])=>{
+  if (!themeHistory.has(themeName)) {
+    themeHistory.set(themeName, []);
+  }
+  let history = themeHistory.get(themeName);
+  
+  const historyMap = new Map();
+  history.forEach(h => historyMap.set(h.time, h));
+  
+  if (lastReachedTime) {
+    historyMap.set(lastReachedTime, { time: lastReachedTime, count: currentCount, virtual: false });
+  }
+  
+  reachedTimePoints.forEach(timePoint => {
+    if (!historyMap.has(timePoint)) {
+      let nearestCount = currentCount;
+      let found = false;
+      
+      for (let i = reachedTimePoints.indexOf(timePoint) + 1; i < reachedTimePoints.length; i++) {
+        const nextTime = reachedTimePoints[i];
+        if (historyMap.has(nextTime)) {
+          nearestCount = historyMap.get(nextTime).count;
+          found = true;
+          break;
+        }
+      }
+      
+      historyMap.set(timePoint, { time: timePoint, count: nearestCount, virtual: !found });
+    }
+  });
+  
+  history = reachedTimePoints.map(tp => historyMap.get(tp));
+  
+  themeHistory.set(themeName, history);
+  
+  const div=document.createElement('div');div.className='theme-stat-item';
+
+  const nameDiv = document.createElement('div');
+  nameDiv.style.display = 'flex';
+  nameDiv.style.gap = '6px';
+  const nameSpan = document.createElement('span');
+  nameSpan.className = 'theme-stat-name';
+  nameSpan.textContent = themeName;
+  const countSpan = document.createElement('span');
+  countSpan.className = 'theme-stat-count';
+  countSpan.textContent = currentCount;
+  
+  const upCount = downMap.get(themeName) || 0;
+  const upSpan = document.createElement('span');
+  upSpan.style.color = '#FFD700';
+  upSpan.style.fontWeight = 'bold';
+  upSpan.style.fontSize = '10px';
+  upSpan.textContent = `/${upCount}`;
+  
+  nameDiv.appendChild(nameSpan);
+  nameDiv.appendChild(countSpan);
+  nameDiv.appendChild(upSpan);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 150;
+  canvas.height = 50;
+  div.appendChild(nameDiv);
+  div.appendChild(canvas);
+
+  div.onclick=e=>{
+    e.stopPropagation();
+    if(div.classList.contains('highlight')){div.classList.remove('highlight');clearHighlights();}
+    else{document.querySelectorAll('.theme-stat-item').forEach(i=>i.classList.remove('highlight'));div.classList.add('highlight');highlightSameTheme(themeName);}
+  };
+  themeStatsContent.appendChild(div);
+
+  drawThemeChart(canvas, history);
+});
+
+saveLocalThemeHistory(getToday(), themeHistory);
+
+// 记录题材涨停总数
+const totalCount = Array.from(filteredMap.values()).reduce((sum, count) => sum + count, 0);
+if (lastReachedTime) {
+  themeTotalHistory.set(lastReachedTime, totalCount);
+  
+  // 保存到本地缓存
+  try {
+    localStorage.setItem('theme_total_history_' + getToday(), JSON.stringify(Array.from(themeTotalHistory.entries())));
+  } catch (e) {
+    console.error('保存题材总数缓存失败:', e);
+  }
+}
+
+// 绘制题材涨停总数折线图
+drawThemeTotalChart();
+}
+function highlightSameTheme(txt){
+clearHighlights();if(!txt||txt==='--')return;currentHighlightedTheme=txt;
+document.querySelectorAll('.theme-cell').forEach(c=>{
+if(c.textContent.trim()===txt){const r=c.closest('tr');if(r){r.classList.add('highlight-row');c.classList.add('highlight-theme');}}
+});
+}
+function updateLimitStats(upCount, downCount) {
+  limitStats.innerHTML = `<span style="color:#ef5350;font-weight:600;">涨停: ${upCount}</span> | <span style="color:#66bb6a;font-weight:600;">跌停: ${downCount}</span>`;
+}
+
+function clearHighlights(){
+document.querySelectorAll('.highlight-row').forEach(x=>x.classList.remove('highlight-row'));
+document.querySelectorAll('.highlight-theme').forEach(x=>x.classList.remove('highlight-theme'));
+document.querySelectorAll('.theme-stat-item').forEach(x=>x.classList.remove('highlight'));
+currentHighlightedTheme=null;
+}
+function drawThemeChart(canvas, history) {
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width;
+  const height = canvas.height;
+  ctx.clearRect(0, 0, width, height);
+  
+  const allTimePoints = ['09:30', '10:00', '10:30', '11:00', '11:30', '13:30', '14:00', '14:30', '15:00'];
+  const padding = { top: 8, right: 8, bottom: 22, left: 28 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  
+  if (!history || history.length === 0) {
+    ctx.fillStyle = '#666';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('等待数据...', width / 2, height / 2);
+    return;
+  }
+  
+  const filledData = history;
+  const reachedTimePoints = filledData.map(d => d.time);
+  const totalPoints = allTimePoints.length;
+  const reachedCount = reachedTimePoints.length;
+  
+  const stepX = chartWidth / (totalPoints - 1);
+  
+  const counts = filledData.map(d => d.count);
+  const maxCount = Math.max(...counts, 5);
+  const minCount = Math.min(...counts, 0);
+  const range = maxCount - minCount || 1;
+  
+  ctx.strokeStyle = '#3d3d3d';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = padding.top + (chartHeight / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(width - padding.right, y);
+    ctx.stroke();
+    const value = Math.round(maxCount - (range / 4) * i);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '9px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(value.toString(), padding.left - 3, y + 3);
+  }
+  
+  ctx.beginPath();
+  ctx.moveTo(padding.left, padding.top);
+  ctx.lineTo(padding.left, height - padding.bottom);
+  ctx.stroke();
+  
+  ctx.beginPath();
+  ctx.moveTo(padding.left, height - padding.bottom);
+  ctx.lineTo(width - padding.right, height - padding.bottom);
+  ctx.stroke();
+  
+  for (let i = 0; i < reachedCount - 1; i++) {
+    const d1 = filledData[i];
+    const d2 = filledData[i + 1];
+    const idx1 = allTimePoints.indexOf(d1.time);
+    const idx2 = allTimePoints.indexOf(d2.time);
+    
+    const x1 = padding.left + idx1 * stepX;
+    const y1 = padding.top + chartHeight - ((d1.count - minCount) / range) * chartHeight;
+    const x2 = padding.left + idx2 * stepX;
+    const y2 = padding.top + chartHeight - ((d2.count - minCount) / range) * chartHeight;
+    
+    ctx.beginPath();
+    ctx.strokeStyle = '#4fc3f7';
+    ctx.lineWidth = 1.5;
+    
+    if (d1.virtual || d2.virtual) {
+      ctx.setLineDash([4, 2]);
+    } else {
+      ctx.setLineDash([]);
+    }
+    
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  
+  filledData.forEach((d) => {
+    const idx = allTimePoints.indexOf(d.time);
+    const x = padding.left + idx * stepX;
+    const y = padding.top + chartHeight - ((d.count - minCount) / range) * chartHeight;
+    
+    if (d.virtual) {
+      ctx.fillStyle = '#66bb6a';
+    } else {
+      ctx.fillStyle = '#ef5350';
+    }
+    
+    ctx.beginPath();
+    ctx.arc(x, y, 0.75, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '9px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  const keyTimePoints = ['09:30', '11:30', '15:00'];
+  reachedTimePoints.forEach((time) => {
+    if (keyTimePoints.includes(time)) {
+      const idx = allTimePoints.indexOf(time);
+      const x = padding.left + idx * stepX;
+      ctx.fillText(time, x, height - 5);
+    }
+  });
+}
+
+// 完全参考第2个文件的表格构建逻辑
+function buildMainTable(allStocks){
+  const themeCount=new Map();
+  const themeTurnover=new Map();
+  const themeReason=new Map();
+  
+  // 统计所有题材的涨停数、成交额和逻辑原因
+  allStocks.forEach(s=>{
+    (s.surge_reason?.related_plates||[]).forEach(p=>{
+      const t=p.plate_name||'';
+      if(t&&t!=='--'){
+        themeCount.set(t,(themeCount.get(t)||0)+1);
+        const turnover = Math.round((s.total_capital || 0) * (s.turnover_ratio || 0));
+        themeTurnover.set(t,(themeTurnover.get(t)||0)+turnover);
+        if (p.plate_reason && !themeReason.has(t)) {
+          themeReason.set(t, p.plate_reason);
+        } else if (!themeReason.has(t) && s.surge_reason?.stock_reason) {
+          themeReason.set(t, s.surge_reason.stock_reason);
+        }
+      }
+    });
+  });
+  
+  // 将低于2个的题材合并到"其他"
+  let otherCount = 0;
+  let otherTurnover = 0;
+  const filteredThemeCount = new Map();
+  const filteredThemeTurnover = new Map();
+  const filteredThemeReason = new Map();
+  
+  themeCount.forEach((count, name) => {
+    if (name === '其他') {
+      otherCount += count;
+      otherTurnover += themeTurnover.get(name) || 0;
+    } else if (count >= 2) {
+      filteredThemeCount.set(name, count);
+      filteredThemeTurnover.set(name, themeTurnover.get(name) || 0);
+      filteredThemeReason.set(name, themeReason.get(name) || '');
+    } else {
+      otherCount += count;
+      otherTurnover += themeTurnover.get(name) || 0;
+    }
+  });
+  
+  if (otherCount > 0) {
+    filteredThemeCount.set('其他', otherCount);
+    filteredThemeTurnover.set('其他', otherTurnover);
+    filteredThemeReason.set('其他', '');
+  }
+  
+  // 按涨停数从高到低排序，"其他"题材排在最后
+  const sortThemes=Array.from(filteredThemeCount)
+    .sort((a,b)=>{
+      if(a[0]==='其他')return 1;
+      if(b[0]==='其他')return -1;
+      return b[1]-a[1];
+    });
+  
+  // 构建表头
+  let headHtml=`<tr>
+    <th>连板层级</th>
+    <th>股票名称</th>
+    <th>涨停时间</th>
+    <th>封单金额</th>
+    <th style="max-width:8ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">涨停原因</th>`;
+  
+  // 添加题材列（列标题：题材名(涨停数)）
+  sortThemes.forEach(([name,num])=>{
+    headHtml+=`<th>${name}(${num})</th>`;
+  });
+  headHtml+=`</tr>`;
+  mainTableHead.innerHTML=headHtml;
+  
+  // 构建表体 - 先添加逻辑和成交额行
+  let bodyHtml='';
+  
+  // 添加逻辑行
+  let logicRow = `<tr><td class="stat-label">逻辑</td><td colspan="4"></td>`;
+  sortThemes.forEach((themeItem)=>{
+    const themeName=themeItem[0];
+    if(themeName==='其他'){
+      logicRow += `<td>-</td>`;
+    }else{
+      const reason = filteredThemeReason.get(themeName) || '';
+      const displayReason = truncateTextToTwoLines(reason).replace(/\n/g, '<br>') || '--';
+      logicRow += `<td class="theme-reason" title="${reason}">${displayReason}</td>`;
+    }
+  });
+  logicRow += `</tr>`;
+  bodyHtml += logicRow;
+  
+  // 添加成交额行
+  let turnoverRow = `<tr><td class="stat-label">成交额</td><td colspan="4"></td>`;
+  sortThemes.forEach((themeItem)=>{
+    const themeName=themeItem[0];
+    if(themeName==='其他'){
+      turnoverRow += `<td>-</td>`;
+    }else{
+      const turnover = filteredThemeTurnover.get(themeName) || 0;
+      turnoverRow += `<td class="theme-turnover">${fmtAmount(turnover)}</td>`;
+    }
+  });
+  turnoverRow += `</tr>`;
+  bodyHtml += turnoverRow;
+  
+  const boardNameMap={
+    six_plus:'6板+',
+    five:'5板',
+    four:'4板',
+    three:'3板',
+    two:'2板',
+    one:'1板'
+  };
+  const boardOrder=['six_plus','five','four','three','two','one'];
+  
+  boardOrder.forEach(boardKey=>{
+    const boardName=boardNameMap[boardKey];
+    const list=boardData[boardKey];
+    
+    if(list.length===0){
+      bodyHtml+=`<tr class="row-board">
+        <td colspan="${5+sortThemes.length}">${boardName} 暂无涨停</td>
+      </tr>`;
+      return;
+    }
+    
+    // 按封板时间从早到晚排序
+    list.sort((a,b)=>(a.last_limit_up||0)-(b.last_limit_up||0));
+    
+    list.forEach(stock=>{
+      const t=fmtTime(stock.last_limit_up);
+      let timeCls='';
+      if(t==='09:25')timeCls='time-red';
+      else if(t==='09:30')timeCls='time-yellow';
+      
+      const stockPlates=(stock.surge_reason?.related_plates||[]).map(p=>p.plate_name);
+      
+      const boardDays = boardName.replace('板','');
+      const changePercent = ((stock.change_percent || 0) * 100).toFixed(2);
+      
+      let row=`<tr onclick="openTdx('${formatStockCode(stock.symbol)}')" style="cursor:pointer;" data-stock-code="${formatStockCode(stock.symbol)}" data-stock-name="${stock.stock_chi_name}" data-board="${boardName}" data-time="${t}" data-reason="${stock.surge_reason?.stock_reason||''}">
+        <td class="row-board">${boardName}</td>
+        <td class="stock-name" onclick="event.stopPropagation(); openTdx('${formatStockCode(stock.symbol)}')">${stock.stock_chi_name}<span style="color:#ff3333;font-weight:bold;font-size:9px;margin-left:4px;">${boardDays}板</span><span style="color:#FFD700;font-weight:bold;font-size:9px;margin-left:4px;">${changePercent}%</span></td>
+        <td class="${timeCls}">${t}</td>
+        <td class="sealed-orders">${fmtAmount(stock.non_restricted_capital * stock.buy_lock_volume_ratio)}</td>
+        <td class="reason" style="max-width:8ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${stock.surge_reason?.stock_reason||''}">${stock.surge_reason?.stock_reason||'--'}</td>`;
+      
+      sortThemes.forEach((themeItem)=>{
+        const themeName=themeItem[0];
+        if(stockPlates.includes(themeName)){
+          row+=`<td class="theme-cell" onclick="event.stopPropagation(); openTdx('${formatStockCode(stock.symbol)}'); highlightSameTheme('${themeName}')">${stock.stock_chi_name}<span style="color:#ff3333;font-weight:bold;font-size:9px;margin-left:2px;">${boardDays}板</span><span style="color:#FFD700;font-weight:bold;font-size:9px;margin-left:2px;">${changePercent}%</span></td>`;
+        }else{
+          row+=`<td>-</td>`;
+        }
+      });
+      
+      row+=`</tr>`;
+      bodyHtml+=row;
+    });
+  });
+  
+  mainTableBody.innerHTML=bodyHtml;
+  mainLoading.style.display='none';
+  mainBoardTable.style.display='table';
+}
+
+async function loadBoards(){
+try{
+  if (!canRefresh()) {
+    mainLoading.textContent = '等待9:25开盘...';
+    mainBoardTable.style.display = 'none';
+    return;
+  }
+  
+mainLoading.style.display='block';
+mainLoading.textContent = '加载中...';
+mainBoardTable.style.display='none';
+clearHighlights();
+const showDate = getToday();
+currentDate = showDate;
+
+const localHistory = getLocalThemeHistory(showDate);
+if (localHistory) {
+  themeHistory = localHistory;
+} else {
+  themeHistory = new Map();
+}
+
+clearOldThemeHistory();
+
+await buildStockSectorMap(showDate);
+
+const upUrl = "https://flash-api.xuangubao.cn/api/pool/detail?pool_name=limit_up";
+const resUp = await fetch(upUrl);
+const jsonUp = await resUp.json();
+const upData = jsonUp.data || [];
+
+const downUrl = "https://flash-api.xuangubao.cn/api/pool/detail?pool_name=limit_down";
+const resDown = await fetch(downUrl);
+const jsonDown = await resDown.json();
+const downData = jsonDown.data || [];
+downStocks = downData.filter(item => !isSTStock(item.stock_chi_name));
+
+const one=[],two=[],three=[],four=[],five=[],six_plus=[];
+upData.forEach(item=>{
+  if(isSTStock(item.stock_chi_name)) return;
+  const cnt = item.limit_up_days || 1;
+  if(cnt===1)one.push(item);
+  else if(cnt===2)two.push(item);
+  else if(cnt===3)three.push(item);
+  else if(cnt===4)four.push(item);
+  else if(cnt===5)five.push(item);
+  else six_plus.push(item);
+});
+async function attachTheme(list){
+  for(let item of list){
+    const info=await getStockSectorInfo(item.symbol, item.stock_chi_name, item.surge_reason?.stock_reason);
+    item.theme=info.theme;
+  }
+  return list;
+}
+boardData.one = await attachTheme(one);
+boardData.two = await attachTheme(two);
+boardData.three = await attachTheme(three);
+boardData.four = await attachTheme(four);
+boardData.five = await attachTheme(five);
+boardData.six_plus = await attachTheme(six_plus);
+
+// 获取所有非ST涨停股票
+const allStocks = [...boardData.six_plus, ...boardData.five, ...boardData.four, ...boardData.three, ...boardData.two, ...boardData.one];
+
+const upCount = allStocks.length;
+const downCount = downData.filter(item => !isSTStock(item.stock_chi_name)).length;
+
+updateLimitStats(upCount, downCount);
+
+// 从本地缓存加载题材涨停总数
+try {
+  const storedTotal = localStorage.getItem('theme_total_history_' + showDate);
+  if (storedTotal) {
+    themeTotalHistory = new Map(JSON.parse(storedTotal));
+  }
+} catch (e) {
+  themeTotalHistory = new Map();
+}
+
+// 绘制题材涨停总数折线图
+drawThemeTotalChart();
+
+// 构建表格
+buildMainTable(allStocks);
+
+// 更新题材统计
+updateThemeStatistics(allStocks);
+updateDateDisplay(showDate);
+setupRecordTimer();
+}catch(e){
+console.error(e);
+mainLoading.textContent='加载失败，请重试';
+}
+}
+function setupRefreshTimer(interval){
+clearInterval(refreshTimer);clearInterval(countdownInterval);refreshTimer=countdownInterval=null;
+if(interval>0){
+  if (!canRefresh()) {
+    const now = new Date();
+    const targetTime = new Date(now);
+    targetTime.setHours(9, 25, 0, 0);
+    const delay = targetTime.getTime() - now.getTime();
+    if (delay > 0) {
+      setTimeout(() => {
+        setupRefreshTimer(interval);
+      }, delay);
+      nextRefreshTime = targetTime;
+      countdownInterval = setInterval(() => updateNextRefreshDisplay(interval), 1000);
+      return;
+    }
+  }
+  refreshTimer=setInterval(()=>{loadBoards();setNextRefreshTime(interval);},interval);
+  setNextRefreshTime(interval);countdownInterval=setInterval(()=>updateNextRefreshDisplay(interval),1000);
+}
+else updateNextRefreshDisplay(0);
+}
+function initPage(){
+const defaultDate=getToday();
+currentDate=defaultDate;
+updateDateDisplay(defaultDate);
+updateTimeDisplay();
+setInterval(updateTimeDisplay, 1000);
+
+// 初始化题材涨停总数折线图
+drawThemeTotalChart();
+
+initAdjustSliders();
+const itv=parseInt(refreshSelect.value);
+setupRefreshTimer(itv);
+
+if (!canRefresh()) {
+  mainLoading.textContent = '等待9:25开盘...';
+} else {
+  loadBoards();
+}
+
+refreshSelect.addEventListener('change',function(){
+setupRefreshTimer(parseInt(this.value));});
+refreshBtn.addEventListener('click',function(){
+this.textContent='刷新中...';this.disabled=true;
+loadBoards().finally(()=>{
+setTimeout(()=>{this.textContent='立即刷新';this.disabled=false;},500);});
+const i=parseInt(refreshSelect.value);if(i>0)setNextRefreshTime(i);});
+document.addEventListener('click',e=>{
+if(!e.target.classList.contains('theme-cell')&&!e.target.closest('.theme-stat-item'))clearHighlights();
+});
+initTooltip();
+}
+
+function initTooltip() {
+    const tooltip = document.getElementById('tooltip');
+    document.addEventListener('mouseover', function(e) {
+        const stockRow = e.target.closest('#mainBoardTable tbody tr');
+        if (stockRow) {
+            const stockCode = stockRow.getAttribute('data-stock-code');
+            const stockName = stockRow.getAttribute('data-stock-name');
+            const board = stockRow.getAttribute('data-board');
+            const time = stockRow.getAttribute('data-time');
+            const reason = stockRow.getAttribute('data-reason');
+            
+            // 只有当股票代码存在时才显示tooltip
+            if (!stockCode || !stockName) {
+                tooltip.style.display = 'none';
+                return;
+            }
+            
+            let content = `<div class="info-row">${stockCode ? `<span class="label">代码：</span><span class="value">${stockCode}</span>` : ''}${stockName ? `<span class="divider"> | </span><span class="label">名称：</span><span class="value">${stockName}</span>` : ''}</div>`;
+            content += `<div class="info-row">${board ? `<span class="label">连板：</span><span class="value">${board}</span>` : ''}${time ? `<span class="divider"> | </span><span class="label">时间：</span><span class="value">${time}</span>` : ''}</div>`;
+            if (reason && reason.trim()) content += `<div class="analysis-section"><span class="label">涨停原因：</span><br><span class="value">${reason}</span></div>`;
+            
+            tooltip.innerHTML = content;
+            tooltip.style.display = 'block';
+            var rect = e.target.getBoundingClientRect();
+            tooltip.style.left = rect.left + 'px';
+            tooltip.style.top = (rect.top - tooltip.offsetHeight * 1.5) + 'px';
+        }
+    });
+    document.addEventListener('mouseout', function(e) {
+        if (e.target.closest('#mainBoardTable tbody tr')) {
+            tooltip.style.display = 'none';
+        }
+    });
+    document.addEventListener('mousemove', function(e) {
+        if (tooltip.style.display === 'block') {
+            var rect = e.target.getBoundingClientRect();
+            tooltip.style.left = rect.left + 'px';
+            tooltip.style.top = (rect.top - tooltip.offsetHeight * 1.5) + 'px';
+        }
+    });
+}
+
+window.onload=initPage;
+window.addEventListener('beforeunload',()=>{clearInterval(refreshTimer);clearInterval(countdownInterval);});
+</script>
+</body>
+</html>
