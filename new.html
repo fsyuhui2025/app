@@ -884,31 +884,90 @@ async function getMacdGoldenCrossDates(code, market) {
 // =========================================================
 // 主逻辑
 // =========================================================
-
 // 1. 点击“新增数据”
 btnImportExcel.addEventListener('click', () => excelUpload.click());
 excelUpload.addEventListener('change', (e) => {
   const file = e.target.files[0]; if (!file) return;
   dataPanel.style.display = 'block'; toolLog.innerHTML = ''; toolJsonBox.style.display = 'none';
-  writeLog(`正在解析 Excel: ${file.name} ...`, 'info');
+  writeLog(`正在解析文件: ${file.name} ...`, 'info');
 
   const reader = new FileReader();
   reader.onload = (evt) => {
     try {
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false });
+      const bytes = new Uint8Array(evt.target.result);
+      let rawRows = [];
+      let isTextParsed = false;
       
-      let headerIndex = 0;
-      for (let i = 0; i < Math.min(rawRows.length, 10); i++) {
-        if (!rawRows[i]) continue;
-        const rowStr = rawRows[i].map(c => String(c || '')).join('').replace(/[\s\u3000]+/g, '');
-        if (rowStr.includes('代码')) { headerIndex = i; break; }
+      // 1. 优先尝试按文本格式解码（探测是否包含中文字符）
+      let text = '';
+      const encodings = ['gbk', 'gb18030', 'utf-8', 'utf-16le'];
+      for (let enc of encodings) {
+          try {
+              const decoded = new TextDecoder(enc).decode(bytes);
+              // 只要出现了“代码”或“名称”，说明底层就是文本或 HTML！
+              if (decoded.includes('代码') || decoded.includes('名称')) {
+                  text = decoded;
+                  isTextParsed = true;
+                  break;
+              }
+          } catch(e) {}
       }
-      if (!rawRows[headerIndex]) { writeLog("❌ 失败：读取到的 Excel 内容为空。", 'error'); return; }
 
-      const headers = rawRows[headerIndex].map(h => String(h || '').replace(/[\s\u3000]+/g, ''));
+      if (isTextParsed) {
+          writeLog('⚠️ 识别到文本/网页格式，正在切换强力解析模式...', 'warn');
+          // 情况A：如果是网页复制带来的 HTML 格式
+          if (text.includes('<table') || text.includes('<tr')) {
+              writeLog('🔍 提取 HTML 表格...', 'info');
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(text, 'text/html');
+              const trs = doc.querySelectorAll('tr');
+              rawRows = Array.from(trs).map(tr => Array.from(tr.querySelectorAll('td, th')).map(td => td.innerText.trim()));
+          } else {
+              // 情况B：纯文本 / CSV / TSV
+              writeLog('🔍 提取纯文本行列...', 'info');
+              const lines = text.split(/\r\n|[\n\r]/).filter(l => l.trim() !== '');
+              rawRows = lines.map(line => {
+                  if (line.includes('\t')) return line.split('\t').map(s => s.trim());
+                  if (line.includes(',')) return line.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+                  // 如果是连续空格分隔
+                  return line.split(/[\s\u3000]{2,}/).map(s => s.trim());
+              });
+          }
+      } else {
+          // 2. 如果没有中文，说明是真正的二进制 Excel 文件
+          writeLog('🔍 提取二进制 Excel 数据...', 'info');
+          const workbook = XLSX.read(bytes, { type: 'array', cellDates: true });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false });
+      }
+
+      // 3. 寻找表头
+      let headerIndex = -1;
+      for (let i = 0; i < Math.min(rawRows.length, 20); i++) {
+        if (!rawRows[i]) continue;
+        const rowStr = rawRows[i].map(c => String(c || '')).join('').replace(/[\s\u3000\uFEFF]+/g, '');
+        if (rowStr.includes('代码') && (rowStr.includes('开始') || rowStr.includes('时间'))) { 
+          headerIndex = i; 
+          break; 
+        }
+      }
+      
+      if (headerIndex === -1) {
+        for (let i = 0; i < Math.min(rawRows.length, 20); i++) {
+          if (!rawRows[i]) continue;
+          const rowStr = rawRows[i].map(c => String(c || '')).join('').replace(/[\s\u3000\uFEFF]+/g, '');
+          if (rowStr.includes('代码')) { headerIndex = i; break; }
+        }
+      }
+
+      if (headerIndex === -1 || !rawRows[headerIndex]) { 
+        writeLog("❌ 失败：找不到包含“代码”的表头行。", 'error'); 
+        writeLog(`读取到的前两行数据: [${(rawRows[0] || []).join(' | ')}]`, 'error');
+        return; 
+      }
+
+      const headers = rawRows[headerIndex].map(h => String(h || '').replace(/[\s\u3000\uFEFF]+/g, ''));
+      
       const findCol = (keywords) => {
         for (let i = 0; i < headers.length; i++) {
           for (let kw of keywords) { if (headers[i].includes(kw)) return i; }
@@ -916,24 +975,53 @@ excelUpload.addEventListener('change', (e) => {
         return -1;
       };
 
-      const colCode = findCol(['代码']), colName = findCol(['名称']), colPrice = findCol(['现价']), colChg = findCol(['今日涨幅']);
-      const colS = findCol(['开始时间', '开始日期']), colE = findCol(['结束时间', '结束日期']), colB = findCol(['几天几板']);
-      const colRc = findCol(['个股区间涨幅', '区间涨幅']), colSe = findCol(['结束至今涨幅', '结束至今']), colMc = findCol(['大盘区间涨幅', '大盘区间']);
+      const colCode = findCol(['代码', '股票代码', '证券代码']);
+      const colName = findCol(['名称', '股票名称', '证券名称']);
+      const colPrice = findCol(['现价', '最新价', '价格', '收盘价']);
+      const colChg = findCol(['今日涨幅', '涨幅', '涨跌幅']);
+      const colS = findCol(['开始时间', '开始日期', '开始', '首板']);
+      const colE = findCol(['结束时间', '结束日期', '结束']);
+      const colB = findCol(['几天几板', '连板', '板数']);
+      const colRc = findCol(['个股区间涨幅', '区间涨幅', '个股涨幅']);
+      const colSe = findCol(['结束至今涨幅', '结束至今', '至今']);
+      const colMc = findCol(['大盘区间涨幅', '大盘区间', '大盘']);
 
-      if (colCode === -1 || colS === -1) { writeLog(`❌ 失败：找不到必要列（代码/开始时间）。`, 'error'); return; }
+      if (colCode === -1 || colS === -1) { 
+        writeLog(`❌ 失败：找不到必要列（代码/开始时间）。`, 'error');
+        writeLog(`实际解析到的表头: [${headers.join(' | ')}]`, 'error');
+        return; 
+      }
 
+      // 4. 提取数据行
       excelData = [];
       for (let i = headerIndex + 1; i < rawRows.length; i++) {
         const row = rawRows[i];
-        if (!row || row.length === 0 || !row[colCode]) continue;
+        if (!row || row.length === 0) continue;
+        
+        const codeStr = String(row[colCode] || '').trim();
+        if (!codeStr) continue;
+        
         excelData.push({
-          rawCode: row[colCode], rawName: row[colName], rawPrice: row[colPrice], rawChg: row[colChg],
-          rawS: row[colS], rawE: row[colE], rawB: row[colB], rawRc: row[colRc], rawSe: row[colSe], rawMc: row[colMc]
+          rawCode: row[colCode], 
+          rawName: row[colName] || '', 
+          rawPrice: row[colPrice] || 0, 
+          rawChg: row[colChg] || 0,
+          rawS: row[colS] || '', 
+          rawE: row[colE] || '', 
+          rawB: row[colB] || '', 
+          rawRc: row[colRc] || 0, 
+          rawSe: row[colSe] || 0, 
+          rawMc: row[colMc] || 0
         });
       }
       
-      writeLog(`✅ Excel 解析成功，提取出 ${excelData.length} 行原始数据。`, 'success');
+      writeLog(`✅ 文件解析成功，提取出 ${excelData.length} 行原始数据。`, 'success');
       
+      if (excelData.length === 0) {
+          writeLog("⚠️ 未提取到有效数据，请检查数据格式。", 'warn');
+          return;
+      }
+
       const allRecords = excelData.map(r => parseRowToRecord(r));
       const prettyJson = `[\n${allRecords.map(r => JSON.stringify(r)).join(',\n')}\n]`;
       toolJsonOutput.value = prettyJson;
@@ -941,11 +1029,12 @@ excelUpload.addEventListener('change', (e) => {
       toolJsonBox.style.display = 'block';
       writeLog(`💡 已生成全量转换 JSON，可点击“一键复制”。请继续点击“打开数据源”进行比对过滤。`, 'info');
 
-    } catch (err) { writeLog(`❌ Excel 读取异常: ${err.message}`, 'error'); }
+    } catch (err) { 
+      writeLog(`❌ 读取异常: ${err.message}`, 'error'); 
+    }
   };
   reader.readAsArrayBuffer(file);
 });
-
 // 2. 点击“打开数据源”
 btnOpenDataJs.addEventListener('click', () => jsUpload.click());
 jsUpload.addEventListener('change', (e) => {
